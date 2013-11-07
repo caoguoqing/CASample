@@ -2,7 +2,7 @@
 //  ViewController.m
 //  AUCallback
 //
-//  Created by Chinh Nguyen on 10/14/13.
+//  Edited by Chinh Nguyen on 11/05/13.
 //  Copyright (c) 2013 Chinh Nguyen. All rights reserved.
 //
 
@@ -15,6 +15,7 @@
 @property (nonatomic) AudioUnit remoteIOUnit;
 @property (nonatomic) AudioStreamBasicDescription *myASBD;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
+@property (strong, nonatomic) AVAudioPlayer* player;
 
 @end
 
@@ -115,8 +116,8 @@ OSStatus RecordingCallback (
     
     AudioBuffer buffer;
 	buffer.mNumberChannels = 1;
-	buffer.mDataByteSize = inNumberFrames * 2;
-	buffer.mData = malloc( inNumberFrames * 2 );
+	buffer.mDataByteSize = inNumberFrames * sizeof(SInt16);
+	buffer.mData = malloc(inNumberFrames * sizeof(SInt16));
     
 	// Put buffer in a AudioBufferList
 	AudioBufferList bufferList;
@@ -219,10 +220,8 @@ OSStatus RecordingCallback (
     
     
     // set up file
-    NSArray  *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-    NSString *documentsDirectory = [paths objectAtIndex:0];
-    NSString *recordFile = [documentsDirectory stringByAppendingPathComponent: @"audio.caf"];
-    NSURL *url = [NSURL fileURLWithPath:recordFile];
+    NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
+    NSURL *url = [urls[0] URLByAppendingPathComponent:@"audio.caf"];
     
     ExtAudioFileRef outputAudioFile;
     AudioFileTypeID fileType = kAudioFileCAFType;
@@ -291,4 +290,12 @@ OSStatus RecordingCallback (
     }
 
 }
+- (IBAction)play:(id)sender {
+    NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
+    NSURL *url = [urls[0] URLByAppendingPathComponent:@"audio.caf"];
+    NSError *error = nil;
+    self.player = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:&error];
+    [self.player play];
+}
+
 @end

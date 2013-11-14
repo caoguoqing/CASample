@@ -16,7 +16,8 @@
 @property (nonatomic) AudioStreamBasicDescription *myASBD;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
-
+@property (nonatomic) Node* head;
+@property (atomic) Node* tail;
 @end
 
 @implementation ViewController
@@ -34,7 +35,12 @@
     [super didReceiveMemoryWarning];
 // Dispose of any resources that can be recreated.
 }
-
+- (Node*) head{
+    if(!_head){
+        _head = (Node*) malloc(sizeof(Node));
+    }
+    return _head;
+}
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = calloc(1, sizeof(AudioStreamBasicDescription));
@@ -86,17 +92,31 @@ OSStatus PlaybackCallback (
                            AudioBufferList *				ioData) {
 	
 	EffectState *effectState = (EffectState*) inRefCon;
-	AudioUnit rioUnit = effectState->rioUnit;
-	OSStatus renderErr = noErr;
-	UInt32 bus1 = 1;
-	// just copy samples
-	renderErr = AudioUnitRender(rioUnit,
-								ioActionFlags,
-								inTimeStamp,
-								bus1,
-								inNumberFrames,
-								ioData);
-	
+//	AudioUnit rioUnit = effectState->rioUnit;
+//	OSStatus renderErr = noErr;
+//	UInt32 bus1 = 1;
+//	// just copy samples
+//	renderErr = AudioUnitRender(rioUnit,
+//								ioActionFlags,
+//								inTimeStamp,
+//								bus1,
+//								inNumberFrames,
+//								ioData);
+    
+    AudioBuffer buffer;
+    buffer = ioData->mBuffers[0];
+    int size = buffer.mDataByteSize/sizeof(SInt16);
+    Node* head = effectState->head;
+    Node* tail = effectState->tail;
+    int count = 0;
+    while(head!=tail && size>count){
+        SInt16* data = buffer.mData+count;
+        *data = head->data;
+        head = (Node*) head->next;
+        count++;
+    }
+    effectState->head = head;
+    buffer.mDataByteSize = count*sizeof(SInt16);
 	return noErr;
 }
 
@@ -112,6 +132,7 @@ OSStatus RecordingCallback (
 	EffectState *effectState = (EffectState*) inRefCon;
 	AudioUnit rioUnit = effectState->rioUnit;
     ExtAudioFileRef outputAudioFile = effectState->outputAudioFile;
+    Node* tail = effectState->tail;
 	OSStatus err = noErr;
     
     AudioBuffer buffer;
@@ -150,10 +171,18 @@ OSStatus RecordingCallback (
 		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
 		return err;
 	}
+    
+    for(int i=0; i<inNumberFrames; i++){
+        Node* next = (Node*) malloc(sizeof(Node));
+        SInt16* data = buffer.mData+i;
+        next->data = (SInt16) *data;
+        tail->next = (struct Node*) next;
+        tail = next;
+    }
+    effectState->tail = tail;
 	
 	return noErr;
 }
-
 
 - (void) setUpAUConnections {
     
@@ -243,6 +272,8 @@ OSStatus RecordingCallback (
     effectState.rioUnit = self.remoteIOUnit;
 	effectState.asbd = myASBD;
     effectState.outputAudioFile = outputAudioFile;
+    effectState.head = self.head;
+    effectState.tail = self.head;
     
     
 // set input callback method

@@ -14,14 +14,6 @@ typedef struct{
     struct Node* next;
 } Node;
 
-typedef struct {
-	AudioUnit rioUnit;
-	AudioStreamBasicDescription asbd;
-    ExtAudioFileRef outputAudioFile;
-    Node* head;
-    Node* tail;
-} EffectState;
-
 @interface ViewController : UIViewController
 
 @end

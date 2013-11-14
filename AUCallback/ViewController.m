@@ -9,15 +9,16 @@
 #import "ViewController.h"
 
 @interface ViewController (){
-    EffectState effectState;
 }
-@property (nonatomic) double sampleRate;
 @property (nonatomic) AudioUnit remoteIOUnit;
+@property (nonatomic) ExtAudioFileRef outputAudioFile;
+@property (nonatomic) Node* head;
+@property (atomic) Node* tail;
+
+@property (nonatomic) double sampleRate;
 @property (nonatomic) AudioStreamBasicDescription *myASBD;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
-@property (nonatomic) Node* head;
-@property (atomic) Node* tail;
 @end
 
 @implementation ViewController
@@ -83,7 +84,7 @@
     self.sampleRate = session.sampleRate;
 }
 
-OSStatus PlaybackCallback (
+static OSStatus PlaybackCallback (
                            void *							inRefCon,
                            AudioUnitRenderActionFlags *	ioActionFlags,
                            const AudioTimeStamp *			inTimeStamp,
@@ -91,37 +92,47 @@ OSStatus PlaybackCallback (
                            UInt32							inNumberFrames,
                            AudioBufferList *				ioData) {
 	
-	EffectState *effectState = (EffectState*) inRefCon;
-//	AudioUnit rioUnit = effectState->rioUnit;
-//	OSStatus renderErr = noErr;
-//	UInt32 bus1 = 1;
-//	// just copy samples
-//	renderErr = AudioUnitRender(rioUnit,
-//								ioActionFlags,
-//								inTimeStamp,
-//								bus1,
-//								inNumberFrames,
-//								ioData);
-    
-    AudioBuffer buffer;
-    buffer = ioData->mBuffers[0];
-    int size = buffer.mDataByteSize/sizeof(SInt16);
-    Node* head = effectState->head;
-    Node* tail = effectState->tail;
-    int count = 0;
-    while(head!=tail && size>count){
-        SInt16* data = buffer.mData+count;
-        *data = head->data;
-        head = (Node*) head->next;
-        count++;
-    }
-    effectState->head = head;
-    buffer.mDataByteSize = count*sizeof(SInt16);
+    id self = (__bridge id)(inRefCon);
+
+	AudioUnit rioUnit = [self remoteIOUnit];
+	OSStatus renderErr = noErr;
+	UInt32 bus1 = 1;
+	// just copy samples
+	renderErr = AudioUnitRender(rioUnit,
+								ioActionFlags,
+								inTimeStamp,
+								bus1,
+								inNumberFrames,
+								ioData);
+
+//    AudioBuffer buffer;
+//    buffer = ioData->mBuffers[0];
+//    int size = buffer.mDataByteSize/sizeof(SInt16);
+//    Node* head = [self head];
+//    Node* tail = [self tail];
+//    
+//    if(head==tail) return noErr;
+//    
+//    int count = 0;
+//    BOOL end = NO;
+//    while(!end && count<size){
+//        Node* tmp = head;
+//        head = (Node*)head->next;
+//        free(tmp);
+//        
+//        if(head==tail) end=YES;
+//        SInt16* data = buffer.mData+count;
+//        *data = head->data;
+//        count++;
+//    }
+//    [self setHead:head];
+//    buffer.mDataByteSize = count*sizeof(SInt16);
+
 	return noErr;
 }
 
 
-OSStatus RecordingCallback (
+static OSStatus RecordingCallback (
                             void *							inRefCon,
                             AudioUnitRenderActionFlags *	ioActionFlags,
                             const AudioTimeStamp *			inTimeStamp,
@@ -129,10 +140,9 @@ OSStatus RecordingCallback (
                             UInt32							inNumberFrames,
                             AudioBufferList *				ioData) {
 	
-	EffectState *effectState = (EffectState*) inRefCon;
-	AudioUnit rioUnit = effectState->rioUnit;
-    ExtAudioFileRef outputAudioFile = effectState->outputAudioFile;
-    Node* tail = effectState->tail;
+    id self = (__bridge id)(inRefCon);
+	AudioUnit rioUnit = [self remoteIOUnit];
+    ExtAudioFileRef outputAudioFile = [self outputAudioFile];
 	OSStatus err = noErr;
     
     AudioBuffer buffer;
@@ -172,14 +182,15 @@ OSStatus RecordingCallback (
 		return err;
 	}
     
-    for(int i=0; i<inNumberFrames; i++){
-        Node* next = (Node*) malloc(sizeof(Node));
-        SInt16* data = buffer.mData+i;
-        next->data = (SInt16) *data;
-        tail->next = (struct Node*) next;
-        tail = next;
-    }
-    effectState->tail = tail;
+//    Node* tail = [self tail];
+//    for(int i=0; i<inNumberFrames; i++){
+//        Node* next = (Node*) malloc(sizeof(Node));
+//        SInt16* data = buffer.mData+i;
+//        next->data = (SInt16) *data;
+//        tail->next = (struct Node*) next;
+//        tail = next;
+//    }
+//    [self setTail:tail];
 	
 	return noErr;
 }
@@ -264,22 +275,16 @@ OSStatus RecordingCallback (
                                       );
     
     NSAssert (setupErr == noErr, @"Couldn't create audio file");
+    self.outputAudioFile = outputAudioFile;
 
-
+// init
+    self.tail = self.head;
 	
-    
-//init data to be passed to callbacks
-    effectState.rioUnit = self.remoteIOUnit;
-	effectState.asbd = myASBD;
-    effectState.outputAudioFile = outputAudioFile;
-    effectState.head = self.head;
-    effectState.tail = self.head;
-    
     
 // set input callback method
     AURenderCallbackStruct callbackStruct;
 	callbackStruct.inputProc = RecordingCallback; // callback function
-	callbackStruct.inputProcRefCon = &effectState;
+	callbackStruct.inputProcRefCon = (__bridge void*)self;
     
     setupErr =
 	AudioUnitSetProperty(self.remoteIOUnit,
@@ -293,7 +298,7 @@ OSStatus RecordingCallback (
     
 	// set render callback method
 	callbackStruct.inputProc = PlaybackCallback; // callback function
-	callbackStruct.inputProcRefCon = &effectState;
+	callbackStruct.inputProcRefCon = (__bridge void*)self;
 	
 	setupErr =
 	AudioUnitSetProperty(self.remoteIOUnit,

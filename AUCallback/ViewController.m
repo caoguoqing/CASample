@@ -94,39 +94,39 @@ static OSStatus PlaybackCallback (
 	
     id self = (__bridge id)(inRefCon);
 
-	AudioUnit rioUnit = [self remoteIOUnit];
-	OSStatus renderErr = noErr;
-	UInt32 bus1 = 1;
-	// just copy samples
-	renderErr = AudioUnitRender(rioUnit,
-								ioActionFlags,
-								inTimeStamp,
-								bus1,
-								inNumberFrames,
-								ioData);
+//	AudioUnit rioUnit = [self remoteIOUnit];
+//	OSStatus renderErr = noErr;
+//	UInt32 bus1 = 1;
+//	// just copy samples
+//	renderErr = AudioUnitRender(rioUnit,
+//								ioActionFlags,
+//								inTimeStamp,
+//								bus1,
+//								inNumberFrames,
+//								ioData);
 
-//    AudioBuffer buffer;
-//    buffer = ioData->mBuffers[0];
-//    int size = buffer.mDataByteSize/sizeof(SInt16);
-//    Node* head = [self head];
-//    Node* tail = [self tail];
-//    
-//    if(head==tail) return noErr;
-//    
-//    int count = 0;
-//    BOOL end = NO;
-//    while(!end && count<size){
-//        Node* tmp = head;
-//        head = (Node*)head->next;
-//        free(tmp);
-//        
-//        if(head==tail) end=YES;
-//        SInt16* data = buffer.mData+count;
-//        *data = head->data;
-//        count++;
-//    }
-//    [self setHead:head];
-//    buffer.mDataByteSize = count*sizeof(SInt16);
+    AudioBuffer buffer;
+    buffer = ioData->mBuffers[0];
+    int size = buffer.mDataByteSize/sizeof(SInt16);
+    Node* head = [self head];
+    Node* tail = [self tail];
+    
+    if(head==tail) return noErr;
+    
+    int count = 0;
+    BOOL end = NO;
+    SInt16* data = (SInt16*) buffer.mData;
+    while(!end && count<size){
+        Node* tmp = head;
+        head = (Node*)head->next;
+        free(tmp);
+        
+        if(head==tail) end=YES;
+        data[count] = head->data;
+        count++;
+    }
+    [self setHead:head];
+    buffer.mDataByteSize = count*sizeof(SInt16);
 
 	return noErr;
 }
@@ -172,26 +172,30 @@ static OSStatus RecordingCallback (
 	// NOTE: Async writes may not be flushed to disk until a the file
 	// reference is disposed using ExtAudioFileDispose
     
-	err = ExtAudioFileWriteAsync( outputAudioFile, inNumberFrames, &bufferList);
-	if( err != noErr )
-	{
-		char	formatID[5] = { 0 };
-		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
-		formatID[4] = '\0';
-		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
-		return err;
-	}
+//	err = ExtAudioFileWriteAsync( outputAudioFile, inNumberFrames, &bufferList);
+//	if( err != noErr )
+//	{
+//		char	formatID[5] = { 0 };
+//		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
+//		formatID[4] = '\0';
+//		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
+//		return err;
+//	}
     
-//    Node* tail = [self tail];
-//    for(int i=0; i<inNumberFrames; i++){
-//        Node* next = (Node*) malloc(sizeof(Node));
-//        SInt16* data = buffer.mData+i;
-//        next->data = (SInt16) *data;
-//        tail->next = (struct Node*) next;
-//        tail = next;
-//    }
-//    [self setTail:tail];
-	
+    Node* tail = [self tail];
+    SInt16* data = (SInt16*) buffer.mData;
+    for(int i=0; i<inNumberFrames; i++){
+        Node* next = (Node*) malloc(sizeof(Node));
+        next->data = data[i];
+        next->next = NULL;
+        
+        tail->next = (struct Node*) next;
+        tail = next;
+    }
+    [self setTail:tail];
+	if(buffer.mDataByteSize!=inNumberFrames*sizeof(SInt16)){
+        NSLog(@"what the hell");
+    }
 	return noErr;
 }
 

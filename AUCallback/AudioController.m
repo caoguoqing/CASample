@@ -189,6 +189,7 @@ static OSStatus RecordingCallback (
 	if(buffer.mDataByteSize!=inNumberFrames*sizeof(SInt16)){
         NSLog(@"what the hell");
     }
+    free(buffer.mData);
 	return noErr;
 }
 

@@ -7,6 +7,8 @@
 //
 
 #import "AudioController.h"
+#import "FrameQueue.h"
+
 @interface AudioController ()
 @property (nonatomic) AudioUnit remoteIOUnit;
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
@@ -51,17 +53,13 @@
 }
 - (FrameQueue*) readQueue{
     if(!_readQueue){
-        _readQueue = malloc(sizeof(FrameQueue));
-        _readQueue->head = malloc(sizeof(Node));
-        _readQueue->tail = _readQueue->head;
+        _readQueue = [[FrameQueue alloc] init];
     }
     return _readQueue;
 }
 - (FrameQueue*) writeQueue{
     if(!_writeQueue){
-        _writeQueue = malloc(sizeof(FrameQueue));
-        _writeQueue->head = malloc(sizeof(Node));
-        _writeQueue->tail = _writeQueue->head;
+        _writeQueue = [[FrameQueue alloc] init];
     }
     return _writeQueue;
 }
@@ -118,24 +116,17 @@ static OSStatus PlaybackCallback (
     AudioBuffer buffer;
     buffer = ioData->mBuffers[0];
     int size = buffer.mDataByteSize/sizeof(SInt16);
-    Node* head = [self readQueue]->head;
-    Node* tail = [self readQueue]->tail;
     
-    if(head==tail) return noErr;
+    FrameQueue* queue = [self readQueue];
+    
+    if([queue isEmpty]) return noErr;
     
     int count = 0;
-    BOOL end = NO;
     SInt16* data = (SInt16*) buffer.mData;
-    while(!end && count<size){
-        Node* tmp = head;
-        head = (Node*)head->next;
-        free(tmp);
-        
-        if(head==tail) end=YES;
-        data[count] = head->data;
+    while(![queue isEmpty] && count<size){
+        data[count] = [queue poll];
         count++;
     }
-    [self readQueue]->head = head;
     buffer.mDataByteSize = count*sizeof(SInt16);
 	return noErr;
 }
@@ -190,18 +181,11 @@ static OSStatus RecordingCallback (
     //		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
     //		return err;
     //	}
-    
-    Node* tail = [self readQueue]->tail;
+    FrameQueue* queue = [self readQueue];
     SInt16* data = (SInt16*) buffer.mData;
     for(int i=0; i<inNumberFrames; i++){
-        Node* next = (Node*) malloc(sizeof(Node));
-        next->data = data[i];
-        next->next = NULL;
-        
-        tail->next = (struct Node*) next;
-        tail = next;
+        [queue add:data[i]];
     }
-    [self readQueue]->tail = tail;
 	if(buffer.mDataByteSize!=inNumberFrames*sizeof(SInt16)){
         NSLog(@"what the hell");
     }

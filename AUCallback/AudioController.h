@@ -8,20 +8,11 @@
 
 #import <Foundation/Foundation.h>
 #import <AVFoundation/AVFoundation.h>
-
-typedef struct{
-    SInt16 data;
-    struct Node* next;
-} Node;
-
-typedef struct{
-    Node* head;
-    Node* tail;
-} FrameQueue;
+#import "FrameQueue.h"
 
 @interface AudioController : NSObject
-@property (nonatomic) FrameQueue* readQueue;
-@property (nonatomic) FrameQueue* writeQueue;
+@property (strong, nonatomic) FrameQueue* readQueue;
+@property (strong, nonatomic) FrameQueue* writeQueue;
 -(void) stop;
 -(void) start;
 @end

@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		348CC4F91835DE9300523911 /* AudioController.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4F81835DE9300523911 /* AudioController.m */; };
+		348CC4FC1835EC2800523911 /* FrameQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4FB1835EC2800523911 /* FrameQueue.m */; };
 		349BCCEF180BDB5500930168 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 349BCCEE180BDB5500930168 /* Foundation.framework */; };
 		349BCCF1180BDB5500930168 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 349BCCF0180BDB5500930168 /* CoreGraphics.framework */; };
 		349BCCF3180BDB5500930168 /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 349BCCF2180BDB5500930168 /* UIKit.framework */; };
@@ -38,6 +39,8 @@
 /* Begin PBXFileReference section */
 		348CC4F71835DE9300523911 /* AudioController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioController.h; sourceTree = "<group>"; };
 		348CC4F81835DE9300523911 /* AudioController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioController.m; sourceTree = "<group>"; };
+		348CC4FA1835EC2800523911 /* FrameQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FrameQueue.h; sourceTree = "<group>"; };
+		348CC4FB1835EC2800523911 /* FrameQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FrameQueue.m; sourceTree = "<group>"; };
 		349BCCEB180BDB5500930168 /* AUCallback.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AUCallback.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		349BCCEE180BDB5500930168 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		349BCCF0180BDB5500930168 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
@@ -130,6 +133,8 @@
 				349BCCF5180BDB5500930168 /* Supporting Files */,
 				348CC4F71835DE9300523911 /* AudioController.h */,
 				348CC4F81835DE9300523911 /* AudioController.m */,
+				348CC4FA1835EC2800523911 /* FrameQueue.h */,
+				348CC4FB1835EC2800523911 /* FrameQueue.m */,
 			);
 			path = AUCallback;
 			sourceTree = "<group>";
@@ -260,6 +265,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				348CC4FC1835EC2800523911 /* FrameQueue.m in Sources */,
 				349BCD05180BDB5500930168 /* ViewController.m in Sources */,
 				349BCCFF180BDB5500930168 /* AppDelegate.m in Sources */,
 				348CC4F91835DE9300523911 /* AudioController.m in Sources */,

@@ -7,12 +7,6 @@
 //
 
 #import <UIKit/UIKit.h>
-#import <AVFoundation/AVFoundation.h>
-
-typedef struct{
-    SInt16 data;
-    struct Node* next;
-} Node;
 
 @interface ViewController : UIViewController
 

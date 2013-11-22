@@ -13,6 +13,13 @@
 @interface AudioController : NSObject
 @property (strong, nonatomic) FrameQueue* readQueue;
 @property (strong, nonatomic) FrameQueue* writeQueue;
--(void) stop;
--(void) start;
+-(int) startRendering;
+-(int) stopRendering;
+-(int) startRecording;
+-(int) stopRecording;
+-(int) setUpInputUnit;
+-(int) setUpOutputUnit;
+-(int) readPCM:(char*) buffer length:(int) length;
+-(int) writePCM:(char*) buffer length:(int) length;
+
 @end

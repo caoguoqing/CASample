@@ -14,6 +14,6 @@ typedef char sample_t;
 @interface FrameQueue : NSObject
 -(void) add:(buffer_t*)data;
 -(int) get:(sample_t*) buffer length:(int) length;
--(buffer_t*) poll;
+//-(buffer_t*) poll;
 -(BOOL) isEmpty;
 @end

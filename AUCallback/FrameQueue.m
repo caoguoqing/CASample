@@ -34,13 +34,13 @@ typedef struct{
     self.tail->next = (struct Node*) next;
     self.tail = next;
 }
--(buffer_t*)poll{
-    if ([self isEmpty]) return NULL;
-    Node* tmp = self.head;
-    self.head = (Node*)self.head->next;
-    free(tmp);
-    return self.head->data;
-}
+//-(buffer_t*)poll{
+//    if ([self isEmpty]) return NULL;
+//    Node* tmp = self.head;
+//    self.head = (Node*)self.head->next;
+//    free(tmp);
+//    return self.head->data;
+//}
 -(int) get:(sample_t*) buffer length:(int) length{
     int required = length;
     int cur = 0;

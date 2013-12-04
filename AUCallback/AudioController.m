@@ -23,7 +23,7 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = malloc(sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= self.sampleRate*1.25;
+        _myASBD->mSampleRate			= 8000;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
@@ -73,7 +73,6 @@
     OSStatus err = noErr;
     err = AudioOutputUnitStart(self.outputUnit);
     NSAssert (err == noErr, @"Couldn't start RIO unit");
-    [self testFrameQueue];
     return err;
 }
 - (int) startRecording{
@@ -148,7 +147,6 @@
 	setupErr =	AudioUnitInitialize(self.inputUnit);
 	NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
     return setupErr;
-    
 }
 - (int) setUpOutputUnit{
     OSStatus setupErr = noErr;
@@ -262,8 +260,13 @@ static OSStatus PlaybackCallback (
     int retrieved = [queue get:buffer.mData length:(inNumberFrames*sizeof(sample_t))];
     
     buffer.mDataByteSize = retrieved;
-//    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
-
+    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
+    sample_t* samples = buffer.mData;
+    for(int i=0; i<retrieved; i++){
+        printf("%d ",samples[i]);
+    }
+    printf("\n");
+    
 	return noErr;
 }
 
@@ -275,7 +278,7 @@ static OSStatus RecordingCallback (
                                    UInt32							inBusNumber,
                                    UInt32							inNumberFrames,
                                    AudioBufferList *				ioData) {
-//    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
+    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
 
 	
     id self = (__bridge id)(inRefCon);
@@ -325,6 +328,12 @@ static OSStatus RecordingCallback (
 	if(buffer->mDataByteSize!=inNumberFrames*sizeof(sample_t)){
         NSLog(@"what the hell");
     }
+    sample_t* samples = buffer->mData;
+    for(int i=0; i<inNumberFrames; i++){
+        printf("%d ", samples[i]);
+    }
+    printf("\n");
+    
 	return noErr;
 }
 -(int) readPCM:(char*) buffer length:(int) length{

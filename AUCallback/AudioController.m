@@ -23,7 +23,7 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = malloc(sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= 8000;
+        _myASBD->mSampleRate			= self.sampleRate;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
@@ -260,12 +260,15 @@ static OSStatus PlaybackCallback (
     int retrieved = [queue get:buffer.mData length:(inNumberFrames*sizeof(sample_t))];
     
     buffer.mDataByteSize = retrieved;
+    
+#ifdef _DEBUG_
     printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
     sample_t* samples = buffer.mData;
     for(int i=0; i<retrieved; i++){
         printf("%d ",samples[i]);
     }
     printf("\n");
+#endif
     
 	return noErr;
 }
@@ -278,8 +281,6 @@ static OSStatus RecordingCallback (
                                    UInt32							inBusNumber,
                                    UInt32							inNumberFrames,
                                    AudioBufferList *				ioData) {
-    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
-
 	
     id self = (__bridge id)(inRefCon);
 	AudioUnit rioUnit = [self inputUnit];
@@ -328,15 +329,20 @@ static OSStatus RecordingCallback (
 	if(buffer->mDataByteSize!=inNumberFrames*sizeof(sample_t)){
         NSLog(@"what the hell");
     }
+    
+#ifdef _DEBUG_
+    printf("RecordingCallback bytesize: %lu\n",inNumberFrames*sizeof(sample_t));
     sample_t* samples = buffer->mData;
     for(int i=0; i<inNumberFrames; i++){
         printf("%d ", samples[i]);
     }
     printf("\n");
+#endif
     
 	return noErr;
 }
 -(int) readPCM:(char*) buffer length:(int) length{
+    //buffer should already be malloc'd
     return [self.readQueue get:buffer length:length];
 }
 -(int) writePCM:(char*) buffer length:(int) length{

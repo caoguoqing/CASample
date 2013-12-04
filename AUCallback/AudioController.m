@@ -23,7 +23,7 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = malloc(sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= 16000;
+        _myASBD->mSampleRate			= self.sampleRate*1.25;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
@@ -73,6 +73,7 @@
     OSStatus err = noErr;
     err = AudioOutputUnitStart(self.outputUnit);
     NSAssert (err == noErr, @"Couldn't start RIO unit");
+    [self testFrameQueue];
     return err;
 }
 - (int) startRecording{
@@ -81,6 +82,7 @@
     NSAssert (err == noErr, @"Couldn't start RIO unit");
     return err;
 }
+
 - (int) stopRendering{
     OSStatus err = noErr;
     err = AudioOutputUnitStop(self.outputUnit);
@@ -257,10 +259,10 @@ static OSStatus PlaybackCallback (
     FrameQueue* queue = [self readQueue];
     if([queue isEmpty]) return noErr;
     
-    buffer_t* mbuffer = [queue poll];
-    memcpy (buffer.mData, mbuffer->mData, mbuffer->mDataByteSize);
-    buffer.mDataByteSize = mbuffer->mDataByteSize;
-    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
+    int retrieved = [queue get:buffer.mData length:(inNumberFrames*sizeof(sample_t))];
+    
+    buffer.mDataByteSize = retrieved;
+//    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
 
 	return noErr;
 }
@@ -273,7 +275,7 @@ static OSStatus RecordingCallback (
                                    UInt32							inBusNumber,
                                    UInt32							inNumberFrames,
                                    AudioBufferList *				ioData) {
-    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
+//    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
 
 	
     id self = (__bridge id)(inRefCon);
@@ -325,23 +327,46 @@ static OSStatus RecordingCallback (
     }
 	return noErr;
 }
-//-(int) readPCM:(char*) buffer length:(int) length{
-//    FrameQueue* tmp = [[FrameQueue alloc] init];
-//    int size = 0;
-//    for(int i=0; i<length && !self.readQueue.isEmpty; i++){
-//        [tmp add:[self.readQueue poll]];
-//        size++;
-//    }
-//    for(int i=0; i<size; i++){
-//        buffer[i] = [tmp poll];
-//    }
-//    return size;
-//}
+-(int) readPCM:(char*) buffer length:(int) length{
+    return [self.readQueue get:buffer length:length];
+}
 -(int) writePCM:(char*) buffer length:(int) length{
-    for(int i=0; i<length; i++){
-        [self.writeQueue add:buffer[i]];
+    buffer_t* mbuffer = malloc(sizeof(buffer_t));
+    mbuffer->mData = buffer;
+    mbuffer->mDataByteSize = length;
+    [self.writeQueue add:mbuffer];
+    return 0;
+}
+
+-(void) testFrameQueue{
+    FrameQueue* queue = [self readQueue];
+    char* a = malloc(10);
+    for(char i=0; i<10; i++) a[i]=i;
+    buffer_t* buffer = malloc(sizeof(buffer_t));
+    buffer->mData = a;
+    buffer->mDataByteSize = 10;
+    [queue add:buffer];
+    
+    a = malloc(7);
+    for(char i=0; i<7; i++) a[i]=i+10;
+    buffer = malloc(sizeof(buffer_t));
+    buffer->mData = a;
+    buffer->mDataByteSize = 7;
+    [queue add:buffer];
+    
+    char* b = malloc(11);
+    int retrieved = [queue get:b length:11];
+    printf("retrieved 1: %d\n",retrieved);
+    for(int i=0; i<retrieved; i++){
+        printf("item %d\n",b[i]);
     }
-    return length;
+    
+    b = malloc(10);
+    retrieved = [queue get:b length:10];
+    printf("retrieved 2: %d\n",retrieved);
+    for(int i=0; i<retrieved; i++){
+        printf("item %d\n",b[i]);
+    }
 }
 
 @end

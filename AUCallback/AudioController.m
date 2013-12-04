@@ -23,11 +23,11 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = malloc(sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= self.sampleRate;
+        _myASBD->mSampleRate			= 16000;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
-        _myASBD->mBitsPerChannel		= 8*sizeof(AudioSampleType);
+        _myASBD->mBitsPerChannel		= 8*sizeof(sample_t);
         _myASBD->mFramesPerPacket     = 1; //uncompressed
         _myASBD->mBytesPerFrame       = _myASBD->mChannelsPerFrame*_myASBD->mBitsPerChannel/8;
         _myASBD->mBytesPerPacket		= _myASBD->mBytesPerFrame*_myASBD->mFramesPerPacket;
@@ -104,9 +104,9 @@
 	
 	// setup an asbd in the iphone canonical format
 	AudioStreamBasicDescription myASBD = *(self.myASBD);
-
+    
     UInt32 oneFlag = 1;
-
+    
 	// enable rio input
 	AudioUnitElement bus1 = 1;
 	setupErr = AudioUnitSetProperty(self.inputUnit,
@@ -146,11 +146,11 @@
 	setupErr =	AudioUnitInitialize(self.inputUnit);
 	NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
     return setupErr;
-
+    
 }
 - (int) setUpOutputUnit{
     OSStatus setupErr = noErr;
-		
+    
 	AudioComponent rioComponent = AudioComponentFindNext(NULL, self.audioCompDesc);
 	setupErr = AudioComponentInstanceNew(rioComponent, &_outputUnit);
 	NSAssert (setupErr == noErr, @"Couldn't get RIO unit instance");
@@ -253,19 +253,15 @@ static OSStatus PlaybackCallback (
     
     AudioBuffer buffer;
     buffer = ioData->mBuffers[0];
-    int size = buffer.mDataByteSize/sizeof(sample_t);
     
     FrameQueue* queue = [self readQueue];
-    
     if([queue isEmpty]) return noErr;
     
-    int count = 0;
-    sample_t* data = (sample_t*) buffer.mData;
-    while(![queue isEmpty] && count<size){
-        data[count] = [queue poll];
-        count++;
-    }
-    buffer.mDataByteSize = count*sizeof(sample_t);
+    buffer_t* mbuffer = [queue poll];
+    memcpy (buffer.mData, mbuffer->mData, mbuffer->mDataByteSize);
+    buffer.mDataByteSize = mbuffer->mDataByteSize;
+    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
+
 	return noErr;
 }
 
@@ -277,21 +273,24 @@ static OSStatus RecordingCallback (
                                    UInt32							inBusNumber,
                                    UInt32							inNumberFrames,
                                    AudioBufferList *				ioData) {
+    printf("RecordingCallback bytesize: %d\n",(int)inNumberFrames*sizeof(sample_t));
+
 	
     id self = (__bridge id)(inRefCon);
 	AudioUnit rioUnit = [self inputUnit];
-//    ExtAudioFileRef outputAudioFile = [self outputAudioFile];
+    //    ExtAudioFileRef outputAudioFile = [self outputAudioFile];
 	OSStatus err = noErr;
     
-    AudioBuffer buffer;
-	buffer.mNumberChannels = 1;
-	buffer.mDataByteSize = inNumberFrames * sizeof(sample_t);
-	buffer.mData = malloc(inNumberFrames * sizeof(sample_t));
+    AudioBuffer* buffer;
+    buffer = malloc(sizeof(AudioBuffer));
+	buffer->mNumberChannels = 1;
+	buffer->mDataByteSize = inNumberFrames * sizeof(sample_t);
+	buffer->mData = malloc(inNumberFrames * sizeof(sample_t));
     
 	// Put buffer in a AudioBufferList
 	AudioBufferList bufferList;
 	bufferList.mNumberBuffers = 1;
-	bufferList.mBuffers[0] = buffer;
+	bufferList.mBuffers[0] = *buffer;
     
     
 	err = AudioUnitRender(rioUnit,
@@ -320,29 +319,24 @@ static OSStatus RecordingCallback (
     //		return err;
     //	}
     FrameQueue* queue = [self readQueue];
-    sample_t* data = (sample_t*) buffer.mData;
-    for(int i=0; i<inNumberFrames; i++){
-        [queue add:data[i]];
-    }
-	if(buffer.mDataByteSize!=inNumberFrames*sizeof(sample_t)){
+    [queue add:buffer];
+	if(buffer->mDataByteSize!=inNumberFrames*sizeof(sample_t)){
         NSLog(@"what the hell");
     }
-    free(buffer.mData);
 	return noErr;
 }
--(int) readPCM:(char*) buffer length:(int) length{
-    FrameQueue* tmp = [[FrameQueue alloc] init];
-    int size = 0;
-    for(int i=0; i<length && !self.readQueue.isEmpty; i++){
-        [tmp add:[self.readQueue poll]];
-        size++;
-    }
-    buffer = malloc(size*sizeof(sample_t));
-    for(int i=0; i<size; i++){
-        buffer[i] = [tmp poll];
-    }
-    return size;
-}
+//-(int) readPCM:(char*) buffer length:(int) length{
+//    FrameQueue* tmp = [[FrameQueue alloc] init];
+//    int size = 0;
+//    for(int i=0; i<length && !self.readQueue.isEmpty; i++){
+//        [tmp add:[self.readQueue poll]];
+//        size++;
+//    }
+//    for(int i=0; i<size; i++){
+//        buffer[i] = [tmp poll];
+//    }
+//    return size;
+//}
 -(int) writePCM:(char*) buffer length:(int) length{
     for(int i=0; i<length; i++){
         [self.writeQueue add:buffer[i]];

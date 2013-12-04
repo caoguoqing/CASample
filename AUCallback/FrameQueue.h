@@ -7,10 +7,12 @@
 //
 
 #import <Foundation/Foundation.h>
+#import <AVFoundation/AVFoundation.h>
 
-typedef SInt16 sample_t;
+typedef AudioBuffer buffer_t;
+typedef char sample_t;
 @interface FrameQueue : NSObject
--(void) add:(sample_t)data;
--(sample_t) poll;
+-(void) add:(buffer_t*)data;
+-(buffer_t*) poll;
 -(BOOL) isEmpty;
 @end

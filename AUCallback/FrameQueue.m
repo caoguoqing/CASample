@@ -10,7 +10,7 @@
 
 @interface FrameQueue()
 typedef struct{
-    sample_t data;
+    buffer_t* data;
     struct Node* next;
 } Node;
 @property (nonatomic) Node* head;
@@ -24,7 +24,7 @@ typedef struct{
     }
     return self;
 }
--(void)add:(sample_t)data{
+-(void)add:(buffer_t*)data{
     Node* next = (Node*) malloc(sizeof(Node));
     next->data = data;
     next->next = NULL;
@@ -32,8 +32,8 @@ typedef struct{
     self.tail->next = (struct Node*) next;
     self.tail = next;
 }
--(sample_t)poll{
-    if ([self isEmpty]) return -1;
+-(buffer_t*)poll{
+    if ([self isEmpty]) return NULL;
     Node* tmp = self.head;
     self.head = (Node*)self.head->next;
     free(tmp);

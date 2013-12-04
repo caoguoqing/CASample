@@ -19,7 +19,7 @@
 -(int) stopRecording;
 -(int) setUpInputUnit;
 -(int) setUpOutputUnit;
--(int) readPCM:(char*) buffer length:(int) length;
--(int) writePCM:(char*) buffer length:(int) length;
+//-(int) readPCM:(char*) buffer length:(int) length;
+//-(int) writePCM:(char*) buffer length:(int) length;
 
 @end

@@ -31,11 +31,9 @@
 }
 - (IBAction)togglePassingThrough:(id)sender {
     if(self.passingThroughSwitch.on){
-        [self.audioController startRecording];
-        [self.audioController startRendering];
+        [self.audioController start];
     } else{
-        [self.audioController stopRecording];
-        [self.audioController stopRendering];
+        [self.audioController stop];
     }
 }
 - (IBAction)play:(id)sender {

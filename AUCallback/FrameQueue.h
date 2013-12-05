@@ -10,7 +10,7 @@
 #import <AVFoundation/AVFoundation.h>
 
 typedef AudioBuffer buffer_t;
-typedef char sample_t;
+typedef AudioSampleType sample_t;
 @interface FrameQueue : NSObject
 -(void) add:(buffer_t*)data;
 -(int) get:(sample_t*) buffer length:(int) length;

@@ -40,7 +40,7 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = calloc(1, sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= 8000;
+        _myASBD->mSampleRate			= self.sampleRate;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
@@ -101,23 +101,12 @@ static OSStatus PlaybackCallback (
                                   AudioBufferList *				ioData) {
 	
     id self = (__bridge id)(inRefCon);
-    
-    AudioBuffer buffer;
-    buffer = ioData->mBuffers[0];
-    
-    FrameQueue* queue = [self readQueue];
+ 
+    FrameQueue* queue = [self writeQueue];
     if([queue isEmpty]) return noErr;
-    
-    int retrieved = [queue get:buffer.mData length:(inNumberFrames*sizeof(sample_t))];
-    
+    AudioBuffer buffer = ioData->mBuffers[0];
+    int retrieved = [queue get:buffer.mData length:inNumberFrames];
     buffer.mDataByteSize = retrieved*sizeof(sample_t);
-    printf("PlaybackCallback bytesize: %d\n",(int)buffer.mDataByteSize);
-    sample_t* samples = buffer.mData;
-    for(int i=0; i<retrieved; i++){
-        printf("%d ",samples[i]);
-    }
-    printf("\n");
-    
 	return noErr;
 }
 
@@ -132,10 +121,10 @@ static OSStatus RecordingCallback (
 	
     id self = (__bridge id)(inRefCon);
 	AudioUnit rioUnit = [self remoteIOUnit];
+    //    ExtAudioFileRef outputAudioFile = [self outputAudioFile];
 	OSStatus err = noErr;
     
-    AudioBuffer* buffer;
-    buffer = malloc(sizeof(AudioBuffer));
+    AudioBuffer* buffer = malloc(sizeof(AudioBuffer));
 	buffer->mNumberChannels = 1;
 	buffer->mDataByteSize = inNumberFrames * sizeof(sample_t);
 	buffer->mData = malloc(inNumberFrames * sizeof(sample_t));
@@ -154,17 +143,13 @@ static OSStatus RecordingCallback (
                           &bufferList);
     
     
+	// Render into audio buffer
 	if( err )
 		fprintf( stderr, "AudioUnitRender() failed with error %i\n", (int)err );
     
     FrameQueue* queue = [self readQueue];
     [queue add:buffer];
-    printf("RecordingCallback bytesize: %lu\n",inNumberFrames*sizeof(sample_t));
-    sample_t* samples = buffer->mData;
-    for(int i=0; i<inNumberFrames; i++){
-        printf("%d ", samples[i]);
-    }
-    printf("\n");
+
 	return noErr;
 }
 
@@ -283,8 +268,8 @@ static OSStatus RecordingCallback (
 	NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
     
 }
-
 -(int) readPCM:(sample_t*) buffer length:(int) length{
+    //buffer should already be malloc'd
     return [self.readQueue get:buffer length:length];
 }
 -(int) writePCM:(sample_t*) buffer length:(int) length{

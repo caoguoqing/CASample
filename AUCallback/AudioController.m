@@ -40,7 +40,7 @@
 - (AudioStreamBasicDescription *)myASBD{
     if(!_myASBD){
         _myASBD = calloc(1, sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= self.sampleRate;
+        _myASBD->mSampleRate			= 8000;
         _myASBD->mFormatID			= kAudioFormatLinearPCM;
         _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _myASBD->mChannelsPerFrame	= 1; //mono
@@ -101,12 +101,15 @@ static OSStatus PlaybackCallback (
                                   AudioBufferList *				ioData) {
 	
     id self = (__bridge id)(inRefCon);
- 
-    FrameQueue* queue = [self writeQueue];
-    if([queue isEmpty]) return noErr;
+    
     AudioBuffer buffer = ioData->mBuffers[0];
-    int retrieved = [queue get:buffer.mData length:inNumberFrames];
-    buffer.mDataByteSize = retrieved*sizeof(sample_t);
+    FrameQueue* queue = [self writeQueue];
+    if([queue isEmpty]){
+        memset(buffer.mData, 0, inNumberFrames*sizeof(sample_t));
+    } else{
+        int retrieved = [queue get:buffer.mData length:inNumberFrames];
+        buffer.mDataByteSize = retrieved*sizeof(sample_t);
+    }
 	return noErr;
 }
 

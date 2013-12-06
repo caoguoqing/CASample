@@ -10,6 +10,8 @@
 #import <AVFoundation/AVFoundation.h>
 #import "FrameQueue.h"
 
+#define _DEBUG_
+
 @interface AudioController : NSObject
 @property (strong, nonatomic) FrameQueue* readQueue;
 @property (strong, nonatomic) FrameQueue* writeQueue;

@@ -14,10 +14,10 @@
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
 @property (nonatomic) double sampleRate;
 @property (nonatomic) AudioStreamBasicDescription *myASBD;
+@property (nonatomic) int readCount;
 @end
 
 @implementation AudioController
-
 - (id) init{
     if (self = [super init]){
         [self setUpAudioSession];
@@ -152,6 +152,32 @@ static OSStatus RecordingCallback (
     
     FrameQueue* queue = [self readQueue];
     [queue add:buffer];
+    
+#ifdef _DEBUG_
+    printf("RecordingCallback\n");
+    sample_t* samples = buffer->mData;
+    for(int i=0; i<inNumberFrames; i++){
+        printf("%d ", samples[i]);
+    }
+    printf("\n");
+    
+    //	err = ExtAudioFileWriteAsync([self outputAudioFile], inNumberFrames, &bufferList);
+    //	if( err != noErr )
+    //	{
+    //		char	formatID[5] = { 0 };
+    //		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
+    //		formatID[4] = '\0';
+    //		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
+    //		return err;
+    //	}
+    //    int readCount = [self readCount];
+    //    if([self readCount]==1000){
+    //        err = ExtAudioFileDispose([self outputAudioFile]);
+    //        printf("Disposing file %d\n",(int)err);
+    //    }
+    //    [self setReadCount:(readCount+1)];
+
+#endif
 
 	return noErr;
 }
@@ -273,7 +299,49 @@ static OSStatus RecordingCallback (
 }
 -(int) readPCM:(sample_t*) buffer length:(int) length{
     //buffer should already be malloc'd
-    return [self.readQueue get:buffer length:length];
+	
+    int retrieved = 0;
+    while(retrieved<length){
+        sample_t* tmp = malloc((length-retrieved)*sizeof(sample_t));
+        int count = [self.readQueue get:tmp length:(length-retrieved)];
+        memcpy(buffer+retrieved, tmp, count*sizeof(sample_t));
+        free(tmp);
+        retrieved+=count;
+    }
+    
+    //    retrieved = [self.readQueue get:buffer length:length];
+    if(retrieved==0) return 0;
+    printf("readPCM retrieved: %d\n",retrieved);
+    
+    AudioBuffer* abuffer = malloc(sizeof(AudioBuffer));
+	abuffer->mNumberChannels = 1;
+	abuffer->mDataByteSize = retrieved * sizeof(sample_t);
+	abuffer->mData = buffer;
+    
+	// Put buffer in a AudioBufferList
+	AudioBufferList bufferList;
+	bufferList.mNumberBuffers = 1;
+	bufferList.mBuffers[0] = *abuffer;
+    
+    
+    OSStatus err = noErr;
+	err = ExtAudioFileWriteAsync([self outputAudioFile], retrieved, &bufferList);
+	if( err != noErr )
+	{
+		char	formatID[5] = { 0 };
+		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
+		formatID[4] = '\0';
+		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
+		return err;
+	}
+    int readCount = [self readCount];
+    if([self readCount]==500){
+        err = ExtAudioFileDispose([self outputAudioFile]);
+        printf("Disposing file %d\n",(int)err);
+    }
+    [self setReadCount:(readCount+1)];
+    
+    return retrieved;
 }
 -(int) writePCM:(sample_t*) buffer length:(int) length{
     buffer_t* mbuffer = malloc(sizeof(buffer_t));

@@ -14,6 +14,7 @@
 @property (strong, nonatomic) AudioController *audioController;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
+@property (weak, nonatomic) IBOutlet UISlider *outVolumeSlider;
 @end
 
 @implementation ViewController
@@ -42,6 +43,9 @@
     NSError *error = nil;
     self.player = [[AVAudioPlayer alloc] initWithContentsOfURL:url error:&error];
     [self.player play];
+}
+- (IBAction)volumeChanged:(id)sender {
+    [self.audioController setOutputVolume:[self.outVolumeSlider value]];
 }
 
 @end

@@ -10,8 +10,6 @@
 #import <AVFoundation/AVFoundation.h>
 #import "FrameQueue.h"
 
-#define _DEBUG_
-
 @interface AudioController : NSObject
 @property (strong, nonatomic) FrameQueue* readQueue;
 @property (strong, nonatomic) FrameQueue* writeQueue;
@@ -19,4 +17,5 @@
 -(void) start;
 -(int) readPCM:(sample_t*) buffer length:(int) length;
 -(int) writePCM:(sample_t*) buffer length:(int) length;
+-(int) setOutputVolume:(float) volume;
 @end

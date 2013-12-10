@@ -16,6 +16,7 @@ typedef struct{
 @property (nonatomic) Node* head;
 @property (atomic) Node* tail;
 @property (atomic) UInt32 index;
+@property (atomic) UInt32 bufferCount;
 @end
 @implementation FrameQueue
 -(id)init{
@@ -23,6 +24,7 @@ typedef struct{
         _head = malloc(sizeof(Node));
         _tail = _head;
         _index = 0;
+        _bufferCount = 0;
     }
     return self;
 }
@@ -33,6 +35,8 @@ typedef struct{
     
     self.tail->next = (struct Node*) next;
     self.tail = next;
+    [self setBufferCount:(self.bufferCount+1)];
+//    printf("bufferCount: %d\n", (unsigned int)self.bufferCount);
 }
 //-(buffer_t*)poll{
 //    if ([self isEmpty]) return NULL;
@@ -63,6 +67,7 @@ typedef struct{
             Node* tmp = self.head;
             self.head = (Node*)self.head->next;
             free(tmp);
+            [self setBufferCount:(self.bufferCount-1)];
         }
     }
     return cur;    

@@ -11,13 +11,17 @@
 
 @interface AudioController ()
 @property (nonatomic) AudioUnit remoteIOUnit;
+@property (nonatomic) AudioUnit mixerUnit;
+
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
 @property (nonatomic) double sampleRate;
 @property (nonatomic) AudioStreamBasicDescription *myASBD;
 @property (nonatomic) int readCount;
 @end
 
-@implementation AudioController
+@implementation AudioController{
+    AUGraph processingGraph;
+}
 - (id) init{
     if (self = [super init]){
         [self setUpAudioSession];
@@ -28,12 +32,12 @@
 
 - (void) start{
     OSStatus err = noErr;
-    err = AudioOutputUnitStart(self.remoteIOUnit);
+    AUGraphStart(processingGraph);
     NSAssert (err == noErr, @"Couldn't start RIO unit");
 }
 - (void) stop{
     OSStatus err = noErr;
-    err = AudioOutputUnitStop(self.remoteIOUnit);
+    AUGraphStop(processingGraph);
     NSAssert (err == noErr, @"Couldn't stop RIO unit");
 }
 
@@ -103,7 +107,7 @@ static OSStatus PlaybackCallback (
     id self = (__bridge id)(inRefCon);
     
     AudioBuffer buffer = ioData->mBuffers[0];
-    FrameQueue* queue = [self writeQueue];
+    FrameQueue* queue = [self readQueue];
     if([queue isEmpty]){
         memset(buffer.mData, 0, inNumberFrames*sizeof(sample_t));
     } else{
@@ -185,21 +189,50 @@ static OSStatus RecordingCallback (
 - (void) setUpAUConnections {
     
 	OSStatus setupErr = noErr;
+    AudioStreamBasicDescription myASBD = *(self.myASBD);
 	
-	// describe unit
-	AudioComponentDescription audioCompDesc;
-	audioCompDesc.componentType = kAudioUnitType_Output;
-	audioCompDesc.componentSubType = kAudioUnitSubType_RemoteIO;
-	audioCompDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
-	audioCompDesc.componentFlags = 0;
-	audioCompDesc.componentFlagsMask = 0;
+	// describe io unit
+	AudioComponentDescription ioUnitDesc;
+	ioUnitDesc.componentType = kAudioUnitType_Output;
+	ioUnitDesc.componentSubType = kAudioUnitSubType_RemoteIO;
+	ioUnitDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	ioUnitDesc.componentFlags = 0;
+	ioUnitDesc.componentFlagsMask = 0;
+
+    AudioComponentDescription mixerDesc = {};
+	mixerDesc.componentType = kAudioUnitType_Mixer;
+	mixerDesc.componentSubType = kAudioUnitSubType_MultiChannelMixer;
+	mixerDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+    
+    setupErr = NewAUGraph (&processingGraph);
+    NSAssert (setupErr == noErr, @"Couldn't create AUGraph");
+
+    AUNode ioNode, mixerNode;
+    
+    setupErr = AUGraphAddNode (processingGraph, &ioUnitDesc, &ioNode);
+    NSAssert (setupErr == noErr, @"Couldn't add ioNode to AUGraph");
+    setupErr = AUGraphAddNode (processingGraph, &mixerDesc, &mixerNode);
+    NSAssert (setupErr == noErr, @"Couldn't add mixerNode to AUGraph");
+
+    setupErr = AUGraphOpen (processingGraph);
+    NSAssert (setupErr == noErr, @"Couldn't open AUGraph");
+
+    setupErr = AUGraphNodeInfo (processingGraph, ioNode, NULL, &_remoteIOUnit);
+    NSAssert (setupErr == noErr, @"Couldn't instantiate io unit");
+    setupErr = AUGraphNodeInfo (processingGraph, mixerNode, NULL, &_mixerUnit);
+    NSAssert (setupErr == noErr, @"Couldn't instantiate mixer unit");
+    
+    setupErr = AUGraphConnectNodeInput(processingGraph, mixerNode, 0, ioNode, 0);
+    NSAssert (setupErr == noErr, @"Couldn't connect units");
+
+
 	
-	// get rio unit from audio component manager
-	AudioComponent rioComponent = AudioComponentFindNext(NULL, &audioCompDesc);
-	setupErr = AudioComponentInstanceNew(rioComponent, &_remoteIOUnit);
-	NSAssert (setupErr == noErr, @"Couldn't get RIO unit instance");
+//	// get rio unit from audio component manager
+//	AudioComponent rioComponent = AudioComponentFindNext(NULL, &audioCompDesc);
+//	setupErr = AudioComponentInstanceNew(rioComponent, &_remoteIOUnit);
+//	NSAssert (setupErr == noErr, @"Couldn't get RIO unit instance");
 	
-	// set up the rio unit for playback
+	// enable io playback (default)
 	UInt32 oneFlag = 1;
 	AudioUnitElement bus0 = 0;
 	setupErr =
@@ -210,21 +243,8 @@ static OSStatus RecordingCallback (
 						  &oneFlag,
 						  sizeof(oneFlag));
 	NSAssert (setupErr == noErr, @"Couldn't enable RIO output");
-	
-	// setup an asbd in the iphone canonical format
-	AudioStreamBasicDescription myASBD = *(self.myASBD);
-    
-	// set format for output (bus 0) on rio's input scope
-	setupErr =
-	AudioUnitSetProperty (self.remoteIOUnit,
-						  kAudioUnitProperty_StreamFormat,
-						  kAudioUnitScope_Input,
-						  bus0,
-						  &myASBD,
-						  sizeof (myASBD));
-	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on input scope / bus 0");
-    
-	// enable rio input
+	   
+	// enable io recording
 	AudioUnitElement bus1 = 1;
 	setupErr = AudioUnitSetProperty(self.remoteIOUnit,
 									kAudioOutputUnitProperty_EnableIO,
@@ -234,7 +254,18 @@ static OSStatus RecordingCallback (
 									sizeof(oneFlag));
 	NSAssert (setupErr == noErr, @"couldn't enable RIO input");
 	
-	// set asbd for mic input
+    
+    // set format for output (bus 0) on rio's input scope
+	setupErr =
+	AudioUnitSetProperty (self.remoteIOUnit,
+						  kAudioUnitProperty_StreamFormat,
+						  kAudioUnitScope_Input,
+						  bus0,
+						  &myASBD,
+						  sizeof (myASBD));
+	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on input scope / bus 0");
+
+    // set format for input (bus 1) on rio's output scope
 	setupErr =
 	AudioUnitSetProperty (self.remoteIOUnit,
 						  kAudioUnitProperty_StreamFormat,
@@ -244,7 +275,16 @@ static OSStatus RecordingCallback (
 						  sizeof (myASBD));
 	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
     
-    
+    // set format for output (bus 0) on mixer's input scope
+    setupErr =
+	AudioUnitSetProperty (self.mixerUnit,
+						  kAudioUnitProperty_StreamFormat,
+						  kAudioUnitScope_Input,
+						  bus0,
+						  &myASBD,
+						  sizeof (myASBD));
+	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
+
     
     // set up file
     NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
@@ -284,7 +324,7 @@ static OSStatus RecordingCallback (
 	callbackStruct.inputProcRefCon = (__bridge void*)self;
 	
 	setupErr =
-	AudioUnitSetProperty(self.remoteIOUnit,
+	AudioUnitSetProperty(self.mixerUnit,
 						 kAudioUnitProperty_SetRenderCallback,
 						 kAudioUnitScope_Global,
 						 bus0,
@@ -293,9 +333,13 @@ static OSStatus RecordingCallback (
 	NSAssert (setupErr == noErr, @"Couldn't set RIO output callback");
     
     
-	setupErr =	AudioUnitInitialize(self.remoteIOUnit);
-	NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
+//	setupErr =	AudioUnitInitialize(self.remoteIOUnit);
+//    NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
     
+
+    setupErr = AUGraphInitialize (processingGraph);
+    NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
+
 }
 -(int) readPCM:(sample_t*) buffer length:(int) length{
     //buffer should already be malloc'd
@@ -349,6 +393,12 @@ static OSStatus RecordingCallback (
     mbuffer->mDataByteSize = length;
     [self.writeQueue add:mbuffer];
     return 0;
+}
+
+-(int) setOutputVolume:(float) volume{
+    NSLog(@"set volume = %f",volume);
+    OSStatus err = AudioUnitSetParameter(_mixerUnit, kMultiChannelMixerParam_Volume, kAudioUnitScope_Output, 0, volume, 0);
+    return err;
 }
 
 -(void) testFrameQueue{

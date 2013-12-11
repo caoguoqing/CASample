@@ -13,15 +13,19 @@
 @property (nonatomic) AudioUnit remoteIOUnit;
 @property (nonatomic) AudioUnit renderMixerUnit;
 
+@property (strong, nonatomic) FrameQueue* readQueue;
+@property (strong, nonatomic) FrameQueue* writeQueue;
+
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
 @property (nonatomic) double sampleRate;
-@property (nonatomic) AudioStreamBasicDescription *myASBD;
+@property (nonatomic) AudioStreamBasicDescription *mASBD;
 @property (nonatomic) int readCount;
 @end
 
 @implementation AudioController{
     AUGraph processingGraph;
 }
+
 - (id) init{
     if (self = [super init]){
         [self setUpAudioSession];
@@ -32,28 +36,28 @@
 
 - (void) start{
     OSStatus err = noErr;
-    AUGraphStart(processingGraph);
-    NSAssert (err == noErr, @"Couldn't start RIO unit");
+    err = AUGraphStart(processingGraph);
+    NSAssert (err == noErr, @"Couldn't start AUGraph");
 }
 - (void) stop{
     OSStatus err = noErr;
-    AUGraphStop(processingGraph);
-    NSAssert (err == noErr, @"Couldn't stop RIO unit");
+    err = AUGraphStop(processingGraph);
+    NSAssert (err == noErr, @"Couldn't stop AUGraph");
 }
 
-- (AudioStreamBasicDescription *)myASBD{
-    if(!_myASBD){
-        _myASBD = calloc(1, sizeof(AudioStreamBasicDescription));
-        _myASBD->mSampleRate			= 8000;
-        _myASBD->mFormatID			= kAudioFormatLinearPCM;
-        _myASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
-        _myASBD->mChannelsPerFrame	= 1; //mono
-        _myASBD->mBitsPerChannel		= 8*sizeof(sample_t);
-        _myASBD->mFramesPerPacket     = 1; //uncompressed
-        _myASBD->mBytesPerFrame       = _myASBD->mChannelsPerFrame*_myASBD->mBitsPerChannel/8;
-        _myASBD->mBytesPerPacket		= _myASBD->mBytesPerFrame*_myASBD->mFramesPerPacket;
+- (AudioStreamBasicDescription *)mASBD{
+    if(!_mASBD){
+        _mASBD = calloc(1, sizeof(AudioStreamBasicDescription));
+        _mASBD->mSampleRate			= 8000;
+        _mASBD->mFormatID			= kAudioFormatLinearPCM;
+        _mASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
+        _mASBD->mChannelsPerFrame	= 1; //mono
+        _mASBD->mBitsPerChannel		= 8*sizeof(sample_t);
+        _mASBD->mFramesPerPacket     = 1; //uncompressed
+        _mASBD->mBytesPerFrame       = _mASBD->mChannelsPerFrame*_mASBD->mBitsPerChannel/8;
+        _mASBD->mBytesPerPacket		= _mASBD->mBytesPerFrame*_mASBD->mFramesPerPacket;
     }
-    return _myASBD;
+    return _mASBD;
 }
 - (FrameQueue*) readQueue{
     if(!_readQueue){
@@ -83,26 +87,16 @@
 	
 	// check if input available?
 	NSAssert (session.inputAvailable, @"Couldn't get current audio input available prop");
-	if (! session.inputAvailable) {
-		UIAlertView *noInputAlert =
-		[[UIAlertView alloc] initWithTitle:@"No audio input"
-								   message:@"No audio input device is currently attached"
-								  delegate:nil
-						 cancelButtonTitle:@"OK"
-						 otherButtonTitles:nil];
-		[noInputAlert show];
-	}
-    
     self.sampleRate = session.sampleRate;
 }
 
-static OSStatus PlaybackCallback (
-                                  void *							inRefCon,
-                                  AudioUnitRenderActionFlags *	ioActionFlags,
-                                  const AudioTimeStamp *			inTimeStamp,
-                                  UInt32							inBusNumber,
-                                  UInt32							inNumberFrames,
-                                  AudioBufferList *				ioData) {
+static OSStatus RenderCallback (
+                                void *							inRefCon,
+                                AudioUnitRenderActionFlags *	ioActionFlags,
+                                const AudioTimeStamp *			inTimeStamp,
+                                UInt32							inBusNumber,
+                                UInt32							inNumberFrames,
+                                AudioBufferList *				ioData) {
 	
     id self = (__bridge id)(inRefCon);
     
@@ -118,47 +112,41 @@ static OSStatus PlaybackCallback (
 }
 
 
-static OSStatus RecordingCallback (
-                                   void *							inRefCon,
-                                   AudioUnitRenderActionFlags *	ioActionFlags,
-                                   const AudioTimeStamp *			inTimeStamp,
-                                   UInt32							inBusNumber,
-                                   UInt32							inNumberFrames,
-                                   AudioBufferList *				ioData) {
+static OSStatus CaptureCallback (
+                                 void *							inRefCon,
+                                 AudioUnitRenderActionFlags *	ioActionFlags,
+                                 const AudioTimeStamp *			inTimeStamp,
+                                 UInt32							inBusNumber,
+                                 UInt32							inNumberFrames,
+                                 AudioBufferList *				ioData) {
 	
     id self = (__bridge id)(inRefCon);
 	AudioUnit rioUnit = [self remoteIOUnit];
-    //    ExtAudioFileRef outputAudioFile = [self outputAudioFile];
 	OSStatus err = noErr;
     
     AudioBuffer* buffer = malloc(sizeof(AudioBuffer));
 	buffer->mNumberChannels = 1;
 	buffer->mDataByteSize = inNumberFrames * sizeof(sample_t);
 	buffer->mData = malloc(inNumberFrames * sizeof(sample_t));
-    
-	// Put buffer in a AudioBufferList
-	AudioBufferList bufferList;
+    AudioBufferList bufferList;
 	bufferList.mNumberBuffers = 1;
 	bufferList.mBuffers[0] = *buffer;
     
-    
+    // Render into audio buffer
 	err = AudioUnitRender(rioUnit,
                           ioActionFlags,
                           inTimeStamp,
                           1,
                           inNumberFrames,
                           &bufferList);
-    
-    
-	// Render into audio buffer
-	if( err )
+	if(err)
 		fprintf( stderr, "AudioUnitRender() failed with error %i\n", (int)err );
     
     FrameQueue* queue = [self readQueue];
     [queue add:buffer];
     
 #ifdef _DEBUG_
-    printf("RecordingCallback\n");
+    printf("CaptureCallback\n");
     sample_t* samples = buffer->mData;
     for(int i=0; i<inNumberFrames; i++){
         printf("%d ", samples[i]);
@@ -180,61 +168,60 @@ static OSStatus RecordingCallback (
     //        printf("Disposing file %d\n",(int)err);
     //    }
     //    [self setReadCount:(readCount+1)];
-
 #endif
-
+    
 	return noErr;
 }
 
 - (void) setUpAUConnections {
     
 	OSStatus setupErr = noErr;
-    AudioStreamBasicDescription myASBD = *(self.myASBD);
+    AudioStreamBasicDescription mASBD = *(self.mASBD);
+    UInt32 oneFlag = 1;
+	AudioUnitElement bus0 = 0;
+    AudioUnitElement bus1 = 1;
+    
 	
-	// describe io unit
+	// describe units
 	AudioComponentDescription ioUnitDesc;
 	ioUnitDesc.componentType = kAudioUnitType_Output;
 	ioUnitDesc.componentSubType = kAudioUnitSubType_VoiceProcessingIO;
 	ioUnitDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
 	ioUnitDesc.componentFlags = 0;
 	ioUnitDesc.componentFlagsMask = 0;
-
-    AudioComponentDescription mixerDesc = {};
+    
+    AudioComponentDescription mixerDesc;
 	mixerDesc.componentType = kAudioUnitType_Mixer;
 	mixerDesc.componentSubType = kAudioUnitSubType_MultiChannelMixer;
 	mixerDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+	mixerDesc.componentFlags = 0;
+	mixerDesc.componentFlagsMask = 0;
+    // end descriptions
     
+    // setup AUGraph
     setupErr = NewAUGraph (&processingGraph);
     NSAssert (setupErr == noErr, @"Couldn't create AUGraph");
-
+    
     AUNode ioNode, mixerNode;
     
     setupErr = AUGraphAddNode (processingGraph, &ioUnitDesc, &ioNode);
     NSAssert (setupErr == noErr, @"Couldn't add ioNode to AUGraph");
     setupErr = AUGraphAddNode (processingGraph, &mixerDesc, &mixerNode);
     NSAssert (setupErr == noErr, @"Couldn't add mixerNode to AUGraph");
-
+    
     setupErr = AUGraphOpen (processingGraph);
     NSAssert (setupErr == noErr, @"Couldn't open AUGraph");
-
+    
     setupErr = AUGraphNodeInfo (processingGraph, ioNode, NULL, &_remoteIOUnit);
     NSAssert (setupErr == noErr, @"Couldn't instantiate io unit");
     setupErr = AUGraphNodeInfo (processingGraph, mixerNode, NULL, &_renderMixerUnit);
     NSAssert (setupErr == noErr, @"Couldn't instantiate mixer unit");
     
-    setupErr = AUGraphConnectNodeInput(processingGraph, mixerNode, 0, ioNode, 0);
+    setupErr = AUGraphConnectNodeInput(processingGraph, mixerNode, bus0, ioNode, bus0);
     NSAssert (setupErr == noErr, @"Couldn't connect units");
-
-
+    // end graph setup
 	
-//	// get rio unit from audio component manager
-//	AudioComponent rioComponent = AudioComponentFindNext(NULL, &audioCompDesc);
-//	setupErr = AudioComponentInstanceNew(rioComponent, &_remoteIOUnit);
-//	NSAssert (setupErr == noErr, @"Couldn't get RIO unit instance");
-	
-	// enable io playback (default)
-	UInt32 oneFlag = 1;
-	AudioUnitElement bus0 = 0;
+	// enable io -- output defaulted
 	setupErr =
 	AudioUnitSetProperty (self.remoteIOUnit,
 						  kAudioOutputUnitProperty_EnableIO,
@@ -243,9 +230,6 @@ static OSStatus RecordingCallback (
 						  &oneFlag,
 						  sizeof(oneFlag));
 	NSAssert (setupErr == noErr, @"Couldn't enable RIO output");
-	   
-	// enable io recording
-	AudioUnitElement bus1 = 1;
 	setupErr = AudioUnitSetProperty(self.remoteIOUnit,
 									kAudioOutputUnitProperty_EnableIO,
 									kAudioUnitScope_Input,
@@ -253,7 +237,7 @@ static OSStatus RecordingCallback (
 									&oneFlag,
 									sizeof(oneFlag));
 	NSAssert (setupErr == noErr, @"couldn't enable RIO input");
-	
+    
     
     // set format for output (bus 0) on rio's input scope
 	setupErr =
@@ -261,32 +245,60 @@ static OSStatus RecordingCallback (
 						  kAudioUnitProperty_StreamFormat,
 						  kAudioUnitScope_Input,
 						  bus0,
-						  &myASBD,
-						  sizeof (myASBD));
+						  &mASBD,
+						  sizeof (mASBD));
 	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on input scope / bus 0");
-
     // set format for input (bus 1) on rio's output scope
 	setupErr =
 	AudioUnitSetProperty (self.remoteIOUnit,
 						  kAudioUnitProperty_StreamFormat,
 						  kAudioUnitScope_Output,
 						  bus1,
-						  &myASBD,
-						  sizeof (myASBD));
+						  &mASBD,
+						  sizeof (mASBD));
 	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
-    
     // set format for output (bus 0) on mixer's input scope
     setupErr =
 	AudioUnitSetProperty (self.renderMixerUnit,
 						  kAudioUnitProperty_StreamFormat,
 						  kAudioUnitScope_Input,
 						  bus0,
-						  &myASBD,
-						  sizeof (myASBD));
+						  &mASBD,
+						  sizeof (mASBD));
 	NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
-
     
+    // set capture callback method
+    AURenderCallbackStruct captureCallbackStruct;
+	captureCallbackStruct.inputProc = CaptureCallback;
+	captureCallbackStruct.inputProcRefCon = (__bridge void*)self;
+    setupErr = AudioUnitSetProperty(self.remoteIOUnit,
+                                    kAudioOutputUnitProperty_SetInputCallback,
+                                    kAudioUnitScope_Global,
+                                    bus1,
+                                    &captureCallbackStruct,
+                                    sizeof (captureCallbackStruct));
+    NSAssert (setupErr == noErr, @"Couldn't set RIO input callback");
+    
+    
+	// set render callback method
+    AURenderCallbackStruct renderCallbackStruct;
+	renderCallbackStruct.inputProc = RenderCallback;
+	renderCallbackStruct.inputProcRefCon = (__bridge void*)self;
+    setupErr = AUGraphSetNodeInputCallback (processingGraph,
+                                            mixerNode,
+                                            bus0,
+                                            &renderCallbackStruct);
+	NSAssert (setupErr == noErr, @"Couldn't set RIO output callback");
+    
+    setupErr = AUGraphInitialize (processingGraph);
+    NSAssert (setupErr == noErr, @"Couldn't initialize AUGraph");
+    
+}
+
+- (void) setUpFile{
     // set up file
+    OSStatus setupErr = noErr;
+    AudioStreamBasicDescription mASBD = *(self.mASBD);
     NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
     NSURL *url = [urls[0] URLByAppendingPathComponent:@"audio.caf"];
     
@@ -295,104 +307,68 @@ static OSStatus RecordingCallback (
     setupErr =  ExtAudioFileCreateWithURL (
                                            (__bridge CFURLRef)url,
                                            fileType,
-                                           &myASBD,
+                                           &mASBD,
                                            NULL,
                                            kAudioFileFlags_EraseFile,
                                            &outputAudioFile
                                            );
-    
     NSAssert (setupErr == noErr, @"Couldn't create audio file");
     self.outputAudioFile = outputAudioFile;
     
-    // set input callback method
-    AURenderCallbackStruct callbackStruct;
-	callbackStruct.inputProc = RecordingCallback; // callback function
-	callbackStruct.inputProcRefCon = (__bridge void*)self;
-    
-    setupErr =
-	AudioUnitSetProperty(self.remoteIOUnit,
-						 kAudioOutputUnitProperty_SetInputCallback,
-						 kAudioUnitScope_Global,
-						 bus1,
-						 &callbackStruct,
-						 sizeof (callbackStruct));
-	NSAssert (setupErr == noErr, @"Couldn't set RIO input callback");
-    
-    
-	// set render callback method
-	callbackStruct.inputProc = PlaybackCallback; // callback function
-	callbackStruct.inputProcRefCon = (__bridge void*)self;
-	
-	setupErr =
-	AudioUnitSetProperty(self.renderMixerUnit,
-						 kAudioUnitProperty_SetRenderCallback,
-						 kAudioUnitScope_Global,
-						 bus0,
-						 &callbackStruct,
-						 sizeof (callbackStruct));
-	NSAssert (setupErr == noErr, @"Couldn't set RIO output callback");
-    
-    
-//	setupErr =	AudioUnitInitialize(self.remoteIOUnit);
-//    NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
-    
-
-    setupErr = AUGraphInitialize (processingGraph);
-    NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
-
 }
--(int) readPCM:(sample_t*) buffer length:(int) length{
+
+-(int) readSamples:(sample_t*) buffer length:(int) num{
     //buffer should already be malloc'd
 	
     int retrieved = 0;
-    while(retrieved<length){
-        sample_t* tmp = malloc((length-retrieved)*sizeof(sample_t));
-        int count = [self.readQueue get:tmp length:(length-retrieved)];
+    while(retrieved<num){
+        usleep(1000);
+        sample_t* tmp = malloc((num-retrieved)*sizeof(sample_t));
+        int count = [self.readQueue get:tmp length:(num-retrieved)];
         memcpy(buffer+retrieved, tmp, count*sizeof(sample_t));
         free(tmp);
         retrieved+=count;
     }
     
-    //    retrieved = [self.readQueue get:buffer length:length];
-    if(retrieved==0) return 0;
-    printf("readPCM retrieved: %d\n",retrieved);
-    
-    AudioBuffer* abuffer = malloc(sizeof(AudioBuffer));
-	abuffer->mNumberChannels = 1;
-	abuffer->mDataByteSize = retrieved * sizeof(sample_t);
-	abuffer->mData = buffer;
-    
-	// Put buffer in a AudioBufferList
-	AudioBufferList bufferList;
-	bufferList.mNumberBuffers = 1;
-	bufferList.mBuffers[0] = *abuffer;
-    
-    
-    OSStatus err = noErr;
-	err = ExtAudioFileWriteAsync([self outputAudioFile], retrieved, &bufferList);
-	if( err != noErr )
-	{
-		char	formatID[5] = { 0 };
-		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
-		formatID[4] = '\0';
-		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
-		return err;
-	}
-    int readCount = [self readCount];
-    if([self readCount]==500){
-        err = ExtAudioFileDispose([self outputAudioFile]);
-        printf("Disposing file %d\n",(int)err);
-    }
-    [self setReadCount:(readCount+1)];
+//    printf("readSamples retrieved: %d\n",retrieved);
+//    
+//    AudioBuffer* mbuffer = malloc(sizeof(AudioBuffer));
+//	mbuffer->mNumberChannels = 1;
+//	mbuffer->mDataByteSize = retrieved * sizeof(sample_t);
+//	mbuffer->mData = buffer;
+//    
+//	// Put buffer in a AudioBufferList
+//	AudioBufferList bufferList;
+//	bufferList.mNumberBuffers = 1;
+//	bufferList.mBuffers[0] = *mbuffer;
+//    
+//    
+//    OSStatus err = noErr;
+//	err = ExtAudioFileWriteAsync([self outputAudioFile], retrieved, &bufferList);
+//	if( err != noErr )
+//	{
+//		char	formatID[5] = { 0 };
+//		*(UInt32 *)formatID = CFSwapInt32HostToBig(err);
+//		formatID[4] = '\0';
+//		fprintf(stderr, "ExtAudioFileWrite FAILED! %d '%-4.4s'\n",(int)err, formatID);
+//		return err;
+//	}
+//    int readCount = [self readCount];
+//    if([self readCount]==500){
+//        err = ExtAudioFileDispose([self outputAudioFile]);
+//        printf("Disposing file %d\n",(int)err);
+//    }
+//    [self setReadCount:(readCount+1)];
     
     return retrieved;
 }
--(int) writePCM:(sample_t*) buffer length:(int) length{
+
+-(int) writeSamples:(sample_t*) buffer length:(int) length{
     buffer_t* mbuffer = malloc(sizeof(buffer_t));
     mbuffer->mData = buffer;
     mbuffer->mDataByteSize = length;
     [self.writeQueue add:mbuffer];
-    return 0;
+    return noErr;
 }
 
 -(int) setOutputVolume:(float) volume{

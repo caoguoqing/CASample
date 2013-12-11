@@ -11,11 +11,9 @@
 #import "FrameQueue.h"
 
 @interface AudioController : NSObject
-@property (strong, nonatomic) FrameQueue* readQueue;
-@property (strong, nonatomic) FrameQueue* writeQueue;
 -(void) stop;
 -(void) start;
--(int) readPCM:(sample_t*) buffer length:(int) length;
--(int) writePCM:(sample_t*) buffer length:(int) length;
+-(int) readSamples:(sample_t*) buffer length:(int) length;
+-(int) writeSamples:(sample_t*) buffer length:(int) length;
 -(int) setOutputVolume:(float) volume;
 @end

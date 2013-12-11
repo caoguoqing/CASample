@@ -323,8 +323,10 @@ static OSStatus CaptureCallback (
     int retrieved = 0;
     while(retrieved<num){
         usleep(1000);
-        int count = [self.readQueue get:(buffer+retrieved) length:(num-retrieved)];
-        retrieved+=count;
+        @autoreleasepool {
+            int count = [self.readQueue get:(buffer+retrieved) length:(num-retrieved)];
+            retrieved+=count;
+        }
     }
     
 //    printf("readSamples retrieved: %d\n",retrieved);

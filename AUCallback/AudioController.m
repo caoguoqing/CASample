@@ -322,8 +322,8 @@ static OSStatus CaptureCallback (
 	
     int retrieved = 0;
     while(retrieved<num){
-        usleep(1000);
         @autoreleasepool {
+            usleep(1000);
             int count = [self.readQueue get:(buffer+retrieved) length:(num-retrieved)];
             retrieved+=count;
         }

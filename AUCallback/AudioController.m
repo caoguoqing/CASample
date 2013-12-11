@@ -11,7 +11,7 @@
 
 @interface AudioController ()
 @property (nonatomic) AudioUnit remoteIOUnit;
-@property (nonatomic) AudioUnit mixerUnit;
+@property (nonatomic) AudioUnit renderMixerUnit;
 
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
 @property (nonatomic) double sampleRate;
@@ -194,7 +194,7 @@ static OSStatus RecordingCallback (
 	// describe io unit
 	AudioComponentDescription ioUnitDesc;
 	ioUnitDesc.componentType = kAudioUnitType_Output;
-	ioUnitDesc.componentSubType = kAudioUnitSubType_RemoteIO;
+	ioUnitDesc.componentSubType = kAudioUnitSubType_VoiceProcessingIO;
 	ioUnitDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
 	ioUnitDesc.componentFlags = 0;
 	ioUnitDesc.componentFlagsMask = 0;
@@ -219,7 +219,7 @@ static OSStatus RecordingCallback (
 
     setupErr = AUGraphNodeInfo (processingGraph, ioNode, NULL, &_remoteIOUnit);
     NSAssert (setupErr == noErr, @"Couldn't instantiate io unit");
-    setupErr = AUGraphNodeInfo (processingGraph, mixerNode, NULL, &_mixerUnit);
+    setupErr = AUGraphNodeInfo (processingGraph, mixerNode, NULL, &_renderMixerUnit);
     NSAssert (setupErr == noErr, @"Couldn't instantiate mixer unit");
     
     setupErr = AUGraphConnectNodeInput(processingGraph, mixerNode, 0, ioNode, 0);
@@ -277,7 +277,7 @@ static OSStatus RecordingCallback (
     
     // set format for output (bus 0) on mixer's input scope
     setupErr =
-	AudioUnitSetProperty (self.mixerUnit,
+	AudioUnitSetProperty (self.renderMixerUnit,
 						  kAudioUnitProperty_StreamFormat,
 						  kAudioUnitScope_Input,
 						  bus0,
@@ -324,7 +324,7 @@ static OSStatus RecordingCallback (
 	callbackStruct.inputProcRefCon = (__bridge void*)self;
 	
 	setupErr =
-	AudioUnitSetProperty(self.mixerUnit,
+	AudioUnitSetProperty(self.renderMixerUnit,
 						 kAudioUnitProperty_SetRenderCallback,
 						 kAudioUnitScope_Global,
 						 bus0,
@@ -397,7 +397,7 @@ static OSStatus RecordingCallback (
 
 -(int) setOutputVolume:(float) volume{
     NSLog(@"set volume = %f",volume);
-    OSStatus err = AudioUnitSetParameter(_mixerUnit, kMultiChannelMixerParam_Volume, kAudioUnitScope_Output, 0, volume, 0);
+    OSStatus err = AudioUnitSetParameter(_renderMixerUnit, kMultiChannelMixerParam_Volume, kAudioUnitScope_Output, 0, volume, 0);
     return err;
 }
 

@@ -66,6 +66,8 @@ typedef struct{
             self.index = 0;
             Node* tmp = self.head;
             self.head = (Node*)self.head->next;
+            free(targetData->mData);
+            free(targetData);
             free(tmp);
             [self setBufferCount:(self.bufferCount-1)];
         }

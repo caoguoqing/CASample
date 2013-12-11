@@ -323,10 +323,7 @@ static OSStatus CaptureCallback (
     int retrieved = 0;
     while(retrieved<num){
         usleep(1000);
-        sample_t* tmp = malloc((num-retrieved)*sizeof(sample_t));
-        int count = [self.readQueue get:tmp length:(num-retrieved)];
-        memcpy(buffer+retrieved, tmp, count*sizeof(sample_t));
-        free(tmp);
+        int count = [self.readQueue get:(buffer+retrieved) length:(num-retrieved)];
         retrieved+=count;
     }
     

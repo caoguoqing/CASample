@@ -48,7 +48,7 @@
 - (AudioStreamBasicDescription *)mASBD{
     if(!_mASBD){
         _mASBD = calloc(1, sizeof(AudioStreamBasicDescription));
-        _mASBD->mSampleRate			= 8000;
+        _mASBD->mSampleRate			= 16000;
         _mASBD->mFormatID			= kAudioFormatLinearPCM;
         _mASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
         _mASBD->mChannelsPerFrame	= 1; //mono
@@ -365,7 +365,7 @@ static OSStatus CaptureCallback (
 -(int) writeSamples:(sample_t*) buffer length:(int) length{
     buffer_t* mbuffer = malloc(sizeof(buffer_t));
     mbuffer->mData = buffer;
-    mbuffer->mDataByteSize = length;
+    mbuffer->mDataByteSize = length*sizeof(sizeof(sample_t));
     [self.writeQueue add:mbuffer];
     return noErr;
 }
@@ -374,6 +374,7 @@ static OSStatus CaptureCallback (
     NSLog(@"set volume = %f",volume);
     OSStatus err = AudioUnitSetParameter(_renderMixerUnit, kMultiChannelMixerParam_Volume, kAudioUnitScope_Output, 0, volume, 0);
     return err;
+    
 }
 
 -(void) testFrameQueue{

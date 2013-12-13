@@ -365,7 +365,7 @@ static OSStatus CaptureCallback (
 -(int) writeSamples:(sample_t*) buffer length:(int) length{
     buffer_t* mbuffer = malloc(sizeof(buffer_t));
     mbuffer->mData = buffer;
-    mbuffer->mDataByteSize = length*sizeof(sizeof(sample_t));
+    mbuffer->mDataByteSize = length*sizeof(sample_t);
     [self.writeQueue add:mbuffer];
     return noErr;
 }

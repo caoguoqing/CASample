@@ -30,6 +30,7 @@
     if (self = [super init]){
         [self setUpAudioSession];
         [self setUpAUConnections];
+//        [self reopenFile];
     }
     return self;
 }
@@ -103,11 +104,36 @@ static OSStatus RenderCallback (
     AudioBuffer buffer = ioData->mBuffers[0];
     FrameQueue* queue = [self readQueue];
     if([queue isEmpty]){
+        *ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;
         memset(buffer.mData, 0, inNumberFrames*sizeof(sample_t));
     } else{
         int retrieved = [queue get:buffer.mData length:inNumberFrames];
         buffer.mDataByteSize = retrieved*sizeof(sample_t);
     }
+
+//    buffer_t buffer = ioData->mBuffers[0];
+//    buffer.mDataByteSize = inNumberFrames*sizeof(sample_t);
+//    buffer.mNumberChannels = 1;
+//    ioData->mNumberBuffers = 1;
+//    OSStatus err = ExtAudioFileRead (
+//                                     [self outputAudioFile],
+//                                     &inNumberFrames,
+//                                     ioData
+//                                     );
+//    buffer.mDataByteSize = inNumberFrames*sizeof(sample_t);
+//    if( err != noErr ){
+//        printf("\nCannot read from file\n");
+//    } else{
+//        printf("\nDid read from file %ld\n",inNumberFrames);
+//        sample_t* samples = buffer.mData;
+//        for(int i=0;i<inNumberFrames;i++){
+//            printf("%d ",samples[i]);
+//        }
+//        printf("\n");
+//        
+//    }
+    
+    
 	return noErr;
 }
 
@@ -172,7 +198,6 @@ static OSStatus CaptureCallback (
     
 	return noErr;
 }
-
 - (void) setUpAUConnections {
     
 	OSStatus setupErr = noErr;
@@ -316,6 +341,22 @@ static OSStatus CaptureCallback (
     self.outputAudioFile = outputAudioFile;
     
 }
+
+- (void) reopenFile{
+    OSStatus setupErr = noErr;
+    NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
+    NSURL *url = [urls[0] URLByAppendingPathComponent:@"audio.caf"];
+    
+    ExtAudioFileRef outputAudioFile;
+    
+    setupErr = ExtAudioFileOpenURL((__bridge CFURLRef)(url), &outputAudioFile);
+    NSAssert (setupErr == noErr, @"Couldn't open audio file");
+    NSLog(@"file reopened");
+    self.outputAudioFile = outputAudioFile;
+    
+    
+}
+
 
 -(int) readSamples:(sample_t*) buffer length:(int) num{
     //buffer should already be malloc'd

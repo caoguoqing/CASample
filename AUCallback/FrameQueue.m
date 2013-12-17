@@ -29,13 +29,15 @@ typedef struct{
     return self;
 }
 -(void)add:(buffer_t*)data{
+    if(!data || !data->mData) return;
     Node* next = (Node*) malloc(sizeof(Node));
     next->data = data;
     next->next = NULL;
     
     self.tail->next = (struct Node*) next;
     self.tail = next;
-    [self setBufferCount:(self.bufferCount+1)];
+    
+//    [self setBufferCount:(self.bufferCount+1)];
 //    printf("bufferCount: %d\n", (unsigned int)self.bufferCount);
 }
 //-(buffer_t*)poll{
@@ -46,33 +48,35 @@ typedef struct{
 //    return self.head->data;
 //}
 -(int) get:(sample_t*) buffer length:(int) length{
-    int required = length;
-    int cur = 0;
-    while (![self isEmpty] && required>0){
-        Node* targetNode = (Node*)self.head->next;
-        buffer_t* targetData = targetNode->data;
-        sample_t* mbuffer = targetData->mData;
-        int available = targetData->mDataByteSize/sizeof(sample_t) - self.index;
-        if(required<available){
-            memcpy(buffer+cur, mbuffer+self.index, required*sizeof(sample_t));
-            cur += required;
-            self.index+=required;
-            required = 0;
-        } else{
-            memcpy(buffer+cur, mbuffer+self.index, available*sizeof(sample_t));
-            cur += available;
-            required -= available;
-            //move next;
-            self.index = 0;
-            Node* tmp = self.head;
-            self.head = (Node*)self.head->next;
-            free(targetData->mData);
-            free(targetData);
-            free(tmp);
-            [self setBufferCount:(self.bufferCount-1)];
+    @synchronized(self){
+        int required = length;
+        int cur = 0;
+        while (![self isEmpty] && required>0){
+            Node* targetNode = (Node*)self.head->next;
+            buffer_t* targetData = targetNode->data;
+            sample_t* mbuffer = targetData->mData;
+            int available = targetData->mDataByteSize/sizeof(sample_t) - self.index;
+            if(required<available){
+                memcpy(buffer+cur, mbuffer+self.index, required*sizeof(sample_t));
+                cur += required;
+                self.index+=required;
+                required = 0;
+            } else{
+                memcpy(buffer+cur, mbuffer+self.index, available*sizeof(sample_t));
+                cur += available;
+                required -= available;
+                //move next;
+                self.index = 0;
+                Node* tmp = self.head;
+                self.head = (Node*)self.head->next;
+                free(tmp);
+                free(targetData->mData);
+                free(targetData);
+                [self setBufferCount:(self.bufferCount-1)];
+            }
         }
+        return cur;
     }
-    return cur;    
 }
 
 -(BOOL) isEmpty{

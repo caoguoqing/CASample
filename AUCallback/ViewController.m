@@ -8,6 +8,7 @@
 
 #import "ViewController.h"
 #import "AudioController.h"
+#import "SVETimer.h"
 @interface ViewController (){
     
 }

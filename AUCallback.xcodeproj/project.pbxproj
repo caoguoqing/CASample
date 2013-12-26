@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3488F203186BBB9400063EC1 /* SVETimer.m in Sources */ = {isa = PBXBuildFile; fileRef = 3488F202186BBB9400063EC1 /* SVETimer.m */; };
 		348CC4F91835DE9300523911 /* AudioController.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4F81835DE9300523911 /* AudioController.m */; };
 		348CC4FC1835EC2800523911 /* FrameQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4FB1835EC2800523911 /* FrameQueue.m */; };
 		349BCCEF180BDB5500930168 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 349BCCEE180BDB5500930168 /* Foundation.framework */; };
@@ -37,6 +38,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		3488F201186BBB9400063EC1 /* SVETimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVETimer.h; sourceTree = "<group>"; };
+		3488F202186BBB9400063EC1 /* SVETimer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SVETimer.m; sourceTree = "<group>"; };
 		348CC4F71835DE9300523911 /* AudioController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioController.h; sourceTree = "<group>"; };
 		348CC4F81835DE9300523911 /* AudioController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioController.m; sourceTree = "<group>"; };
 		348CC4FA1835EC2800523911 /* FrameQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FrameQueue.h; sourceTree = "<group>"; };
@@ -92,6 +95,8 @@
 		349BCCE2180BDB5500930168 = {
 			isa = PBXGroup;
 			children = (
+				3488F201186BBB9400063EC1 /* SVETimer.h */,
+				3488F202186BBB9400063EC1 /* SVETimer.m */,
 				349BCCF4180BDB5500930168 /* AUCallback */,
 				349BCD13180BDB5500930168 /* AUCallbackTests */,
 				349BCCED180BDB5500930168 /* Frameworks */,
@@ -266,6 +271,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				348CC4FC1835EC2800523911 /* FrameQueue.m in Sources */,
+				3488F203186BBB9400063EC1 /* SVETimer.m in Sources */,
 				349BCD05180BDB5500930168 /* ViewController.m in Sources */,
 				349BCCFF180BDB5500930168 /* AppDelegate.m in Sources */,
 				348CC4F91835DE9300523911 /* AudioController.m in Sources */,

@@ -233,15 +233,30 @@ static OSStatus CaptureCallback (
     // describe unit
     AudioComponentDescription audioCompDesc;
     audioCompDesc.componentType = kAudioUnitType_Output;
-    audioCompDesc.componentSubType = kAudioUnitSubType_RemoteIO;
+    audioCompDesc.componentSubType = kAudioUnitSubType_VoiceProcessingIO;
     audioCompDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
     audioCompDesc.componentFlags = 0;
     audioCompDesc.componentFlagsMask = 0;
+
+    // mixer desc
+    AudioComponentDescription mixerDesc;
+    mixerDesc.componentType = kAudioUnitType_Mixer;
+    mixerDesc.componentSubType = kAudioUnitSubType_MultiChannelMixer;
+    mixerDesc.componentManufacturer = kAudioUnitManufacturer_Apple;
+    mixerDesc.componentFlags = 0;
+    mixerDesc.componentFlagsMask = 0;
+
 
     // get rio unit from audio component manager
     AudioComponent rioComponent = AudioComponentFindNext(NULL, &audioCompDesc);
     setupErr = AudioComponentInstanceNew(rioComponent, &_remoteIOUnit);
     NSAssert (setupErr == noErr, @"Couldn't get RIO unit instance");
+
+
+    // get rio unit from audio component manager
+    AudioComponent mixerComponent = AudioComponentFindNext(NULL, &mixerDesc);
+    setupErr = AudioComponentInstanceNew(mixerComponent, &_renderMixerUnit);
+    NSAssert (setupErr == noErr, @"Couldn't get mixer unit instance");
 
     // set up the rio unit for playback
     UInt32 oneFlag = 1;
@@ -288,6 +303,18 @@ static OSStatus CaptureCallback (
                     sizeof (myASBD));
     NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
 
+
+    // set format for output (bus 0) on mixer's input scope
+    setupErr =
+            AudioUnitSetProperty (self.renderMixerUnit,
+                    kAudioUnitProperty_StreamFormat,
+                    kAudioUnitScope_Input,
+                    bus0,
+                    &myASBD,
+                    sizeof (myASBD));
+    NSAssert (setupErr == noErr, @"Couldn't set ASBD for RIO on output scope / bus 1");
+
+
     // set input callback method
     AURenderCallbackStruct callbackStruct;
     callbackStruct.inputProc = CaptureCallback; // callback function
@@ -307,7 +334,7 @@ static OSStatus CaptureCallback (
     callbackStruct.inputProcRefCon = (__bridge void*)self;
 
     setupErr =
-            AudioUnitSetProperty(self.remoteIOUnit,
+            AudioUnitSetProperty(self.renderMixerUnit,
                     kAudioUnitProperty_SetRenderCallback,
                     kAudioUnitScope_Global,
                     bus0,
@@ -316,9 +343,27 @@ static OSStatus CaptureCallback (
     NSAssert (setupErr == noErr, @"Couldn't set RIO output callback");
 
 
+    // direct connect mic to output
+    AudioUnitConnection connection;
+    connection.sourceAudioUnit = _renderMixerUnit;
+    connection.sourceOutputNumber = bus0;
+    connection.destInputNumber = bus0;
+
+    setupErr =
+            AudioUnitSetProperty(_remoteIOUnit,
+                    kAudioUnitProperty_MakeConnection,
+                    kAudioUnitScope_Input,
+                    bus0,
+                    &connection,
+                    sizeof (connection));
+    NSAssert (setupErr == noErr, @"Couldn't set units connection");
+
+
     setupErr =	AudioUnitInitialize(self.remoteIOUnit);
     NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
 
+    setupErr =	AudioUnitInitialize(self.renderMixerUnit);
+    NSAssert (setupErr == noErr, @"Couldn't initialize RIO unit");
 }
 
 - (void) setUpFile{

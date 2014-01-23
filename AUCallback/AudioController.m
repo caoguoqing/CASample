@@ -85,10 +85,11 @@ int consumedPostion = 0;
     BOOL success = [session setActive: YES error: &error];
     NSAssert (success, @"Couldn't initialize audio session");
 
-    success = [session setCategory: AVAudioSessionCategoryPlayAndRecord
+    success = [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                       withOptions:AVAudioSessionCategoryOptionAllowBluetooth
                              error: &error];
     NSAssert (success, @"Couldn't set audio session category");
-
+    
     // check if input available?
     NSAssert (session.inputAvailable, @"Couldn't get current audio input available prop");
     //self.sampleRate = session.sampleRate;
@@ -502,6 +503,20 @@ static OSStatus CaptureCallback (
     NSLog(@"set volume = %f",volume);
     OSStatus err = AudioUnitSetParameter(_renderMixerUnit, kMultiChannelMixerParam_Volume, kAudioUnitScope_Output, 0, volume, 0);
     return err;
+}
+-(void) setSpeakerOn:(BOOL) on{
+    AVAudioSession *session = [AVAudioSession sharedInstance];
+    NSError *error = nil;
+    
+    if(on){
+        BOOL success = [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
+                                                  error:&error];
+        NSAssert (success, @"Couldn't reroute audio");
+    }else{
+        BOOL success = [session overrideOutputAudioPort:AVAudioSessionPortOverrideNone
+                                                  error:&error];
+        NSAssert (success, @"Couldn't reroute audio");
+    }
 }
 
 -(void) testFrameQueue{

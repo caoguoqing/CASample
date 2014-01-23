@@ -16,4 +16,5 @@
 -(int) readSamples:(sample_t*) buffer length:(int) length;
 -(int) writeSamples:(sample_t*) buffer length:(int) length;
 -(int) setOutputVolume:(float) volume;
+-(void) setSpeakerOn:(BOOL)on;
 @end

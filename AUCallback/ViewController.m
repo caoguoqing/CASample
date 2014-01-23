@@ -14,6 +14,7 @@
 }
 @property (strong, nonatomic) AudioController *audioController;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
+@property (strong, nonatomic) IBOutlet UISwitch *speakerSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
 @property (weak, nonatomic) IBOutlet UISlider *outVolumeSlider;
 @end
@@ -37,6 +38,9 @@
     } else{
         [self.audioController stop];
     }
+}
+- (IBAction)toggleSpeaker:(id)sender {
+    [self.audioController setSpeakerOn:self.speakerSwitch.on];
 }
 - (IBAction)play:(id)sender {
     NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];

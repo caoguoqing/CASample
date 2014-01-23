@@ -220,6 +220,13 @@
 				LastUpgradeCheck = 0500;
 				ORGANIZATIONNAME = "Chinh Nguyen";
 				TargetAttributes = {
+					349BCCEA180BDB5500930168 = {
+						SystemCapabilities = {
+							com.apple.BackgroundModes = {
+								enabled = 1;
+							};
+						};
+					};
 					349BCD0B180BDB5500930168 = {
 						TestTargetID = 349BCCEA180BDB5500930168;
 					};

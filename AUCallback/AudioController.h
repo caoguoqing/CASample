@@ -17,4 +17,5 @@
 -(int) writeSamples:(sample_t*) buffer length:(int) length;
 -(int) setOutputVolume:(float) volume;
 -(void) setSpeakerOn:(BOOL)on;
+-(int) getConsumedChunk;
 @end

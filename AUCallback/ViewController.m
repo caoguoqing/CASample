@@ -14,7 +14,6 @@
 }
 @property (strong, nonatomic) AudioController *audioController;
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
-@property (strong, nonatomic) IBOutlet UISwitch *speakerSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
 @property (weak, nonatomic) IBOutlet UISlider *outVolumeSlider;
 @end
@@ -39,9 +38,6 @@
         [self.audioController stop];
     }
 }
-- (IBAction)toggleSpeaker:(id)sender {
-    [self.audioController setSpeakerOn:self.speakerSwitch.on];
-}
 - (IBAction)play:(id)sender {
     NSArray *urls = [[NSFileManager defaultManager] URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask];
     NSURL *url = [urls[0] URLByAppendingPathComponent:@"audio.caf"];
@@ -51,6 +47,20 @@
 }
 - (IBAction)volumeChanged:(id)sender {
     [self.audioController setOutputVolume:[self.outVolumeSlider value]];
+}
+- (IBAction)selectPort:(id)sender {
+    UISegmentedControl* switcher = (UISegmentedControl*)sender;
+    if(switcher.selectedSegmentIndex==0){
+        [self.audioController setAudioPort:SVEAudioSessionPortReceiver];
+    }
+    else if(switcher.selectedSegmentIndex==1){
+        [self.audioController setAudioPort:SVEAudioSessionPortSpeaker];
+    }
+    else{
+        [self.audioController setAudioPort:SVEAudioSessionPortBluetooth];
+    }
+    
+    
 }
 
 @end

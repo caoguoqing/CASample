@@ -10,12 +10,18 @@
 #import <AVFoundation/AVFoundation.h>
 #import "FrameQueue.h"
 
+typedef NS_ENUM(NSInteger, SVEAudioSessionPort) {
+    SVEAudioSessionPortBluetooth,
+    SVEAudioSessionPortSpeaker,
+    SVEAudioSessionPortReceiver,
+};
 @interface AudioController : NSObject
 -(void) stop;
 -(void) start;
 -(int) readSamples:(sample_t*) buffer length:(int) length;
 -(int) writeSamples:(sample_t*) buffer length:(int) length;
 -(int) setOutputVolume:(float) volume;
--(void) setSpeakerOn:(BOOL)on;
+-(BOOL) setAudioPort:(SVEAudioSessionPort)port;
 -(int) getConsumedChunk;
 @end
+

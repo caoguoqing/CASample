@@ -9,6 +9,11 @@
 #import "AudioController.h"
 #import "FrameQueue.h"
 
+
+NSString *const AudioSessionPortBluetooth = @"AudioSessionPortBluetooth";
+NSString *const AudioSessionPortSpeaker = @"AudioSessionPortSpeaker";
+NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
+
 @interface AudioController ()
 @property (nonatomic) AudioUnit remoteIOUnit;
 @property (nonatomic) AudioUnit renderMixerUnit;
@@ -44,9 +49,9 @@
 - (void) stop{
     OSStatus err = noErr;
     err = AUGraphStop(_processingGraph);
-    err = AUGraphUninitialize(_processingGraph);
-    err = AUGraphClose(_processingGraph);
-    err = DisposeAUGraph(_processingGraph);
+//    err = AUGraphUninitialize(_processingGraph);
+//    err = AUGraphClose(_processingGraph);
+//    err = DisposeAUGraph(_processingGraph);
     NSAssert (err == noErr, @"Couldn't stop AUGraph");
     self.consumedPosition = 0;
 }
@@ -88,6 +93,7 @@
     NSAssert (success, @"Couldn't initialize audio session");
     
 	success = [session setCategory: AVAudioSessionCategoryPlayAndRecord
+                        withOptions:0
                              error: &error];
 	NSAssert (success, @"Couldn't set audio session category");
 	
@@ -429,18 +435,47 @@ static OSStatus CaptureCallback (
     return err;
 }
 
--(void) setSpeakerOn:(BOOL) on{
+-(BOOL) setAudioPort:(SVEAudioSessionPort) port{
     AVAudioSession *session = [AVAudioSession sharedInstance];
     NSError *error = nil;
-    if(on){
-        BOOL success = [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
+    BOOL success = NO;
+    switch (port) {
+        case SVEAudioSessionPortReceiver:
+            success = [session setCategory: AVAudioSessionCategoryPlayAndRecord
+                               withOptions:0
+                                     error: &error];
+            if(!success){
+                NSLog(@"Couldn't set options");
+                return NO;
+            }
+            success = success && [session overrideOutputAudioPort:AVAudioSessionPortOverrideNone
+                                                            error:&error];
+            break;
+        case SVEAudioSessionPortSpeaker:
+            success = [session setCategory: AVAudioSessionCategoryPlayAndRecord
+                               withOptions:0
+                                     error: &error];
+            if(!success){
+                NSLog(@"Couldn't set options");
+                return NO;
+            }
+            success = success && [session overrideOutputAudioPort:AVAudioSessionPortOverrideSpeaker
                                                   error:&error];
-        NSAssert (success, @"Couldn't reroute audio");
-    }else{
-        BOOL success = [session overrideOutputAudioPort:AVAudioSessionPortOverrideNone
-                                                  error:&error];
-        NSAssert (success, @"Couldn't reroute audio");
+            break;
+        case SVEAudioSessionPortBluetooth:
+            success = [session setCategory: AVAudioSessionCategoryPlayAndRecord
+                               withOptions:AVAudioSessionCategoryOptionAllowBluetooth
+                                     error: &error];
+            if(!success){
+                NSLog(@"Couldn't set options");
+                return NO;
+            }
+            break;
+        default:
+            break;
     }
+    if(!success) NSLog(@"Couldn't reroute audio");
+    return success;
 }
 
 -(int) getConsumedChunk {

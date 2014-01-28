@@ -8,6 +8,9 @@
 
 /* Begin PBXBuildFile section */
 		341A5D251892059B00DD68B6 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 341A5D241892059B00DD68B6 /* Accelerate.framework */; };
+		3467B6E51897711D00C583F4 /* MixerController.m in Sources */ = {isa = PBXBuildFile; fileRef = 3467B6E41897711D00C583F4 /* MixerController.m */; };
+		3467B6F91897858300C583F4 /* GuitarMonoSTP.aif in Resources */ = {isa = PBXBuildFile; fileRef = 3467B6F41897747D00C583F4 /* GuitarMonoSTP.aif */; };
+		3467B6FA1897858300C583F4 /* DrumsMonoSTP.aif in Resources */ = {isa = PBXBuildFile; fileRef = 3467B6F51897747D00C583F4 /* DrumsMonoSTP.aif */; };
 		3488F203186BBB9400063EC1 /* SVETimer.m in Sources */ = {isa = PBXBuildFile; fileRef = 3488F202186BBB9400063EC1 /* SVETimer.m */; };
 		348CC4F91835DE9300523911 /* AudioController.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4F81835DE9300523911 /* AudioController.m */; };
 		348CC4FC1835EC2800523911 /* FrameQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 348CC4FB1835EC2800523911 /* FrameQueue.m */; };
@@ -40,6 +43,10 @@
 
 /* Begin PBXFileReference section */
 		341A5D241892059B00DD68B6 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = System/Library/Frameworks/Accelerate.framework; sourceTree = SDKROOT; };
+		3467B6E31897711D00C583F4 /* MixerController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MixerController.h; sourceTree = "<group>"; };
+		3467B6E41897711D00C583F4 /* MixerController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MixerController.m; sourceTree = "<group>"; };
+		3467B6F41897747D00C583F4 /* GuitarMonoSTP.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = GuitarMonoSTP.aif; sourceTree = "<group>"; };
+		3467B6F51897747D00C583F4 /* DrumsMonoSTP.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = DrumsMonoSTP.aif; sourceTree = "<group>"; };
 		3488F201186BBB9400063EC1 /* SVETimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVETimer.h; sourceTree = "<group>"; };
 		3488F202186BBB9400063EC1 /* SVETimer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SVETimer.m; sourceTree = "<group>"; };
 		348CC4F71835DE9300523911 /* AudioController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioController.h; sourceTree = "<group>"; };
@@ -95,12 +102,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		3467B6F31897745F00C583F4 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				3467B6F41897747D00C583F4 /* GuitarMonoSTP.aif */,
+				3467B6F51897747D00C583F4 /* DrumsMonoSTP.aif */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
 		349BCCE2180BDB5500930168 = {
 			isa = PBXGroup;
 			children = (
 				3488F201186BBB9400063EC1 /* SVETimer.h */,
 				3488F202186BBB9400063EC1 /* SVETimer.m */,
 				349BCCF4180BDB5500930168 /* AUCallback */,
+				3467B6F31897745F00C583F4 /* Resources */,
 				349BCD13180BDB5500930168 /* AUCallbackTests */,
 				349BCCED180BDB5500930168 /* Frameworks */,
 				349BCCEC180BDB5500930168 /* Products */,
@@ -144,6 +161,8 @@
 				348CC4F81835DE9300523911 /* AudioController.m */,
 				348CC4FA1835EC2800523911 /* FrameQueue.h */,
 				348CC4FB1835EC2800523911 /* FrameQueue.m */,
+				3467B6E31897711D00C583F4 /* MixerController.h */,
+				3467B6E41897711D00C583F4 /* MixerController.m */,
 			);
 			path = AUCallback;
 			sourceTree = "<group>";
@@ -260,6 +279,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3467B6F91897858300C583F4 /* GuitarMonoSTP.aif in Resources */,
+				3467B6FA1897858300C583F4 /* DrumsMonoSTP.aif in Resources */,
 				349BCD07180BDB5500930168 /* Images.xcassets in Resources */,
 				349BCCF9180BDB5500930168 /* InfoPlist.strings in Resources */,
 				349BCD02180BDB5500930168 /* Main.storyboard in Resources */,
@@ -286,6 +307,7 @@
 				349BCD05180BDB5500930168 /* ViewController.m in Sources */,
 				349BCCFF180BDB5500930168 /* AppDelegate.m in Sources */,
 				348CC4F91835DE9300523911 /* AudioController.m in Sources */,
+				3467B6E51897711D00C583F4 /* MixerController.m in Sources */,
 				349BCCFB180BDB5500930168 /* main.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -8,11 +8,14 @@
 
 #import "ViewController.h"
 #import "AudioController.h"
+#import "MixerController.h"
 #import "SVETimer.h"
 @interface ViewController (){
     
 }
 @property (strong, nonatomic) AudioController *audioController;
+@property (strong, nonatomic) MixerController *mixerController;
+
 @property (weak, nonatomic) IBOutlet UISwitch *passingThroughSwitch;
 @property (strong, nonatomic) AVAudioPlayer* player;
 @property (weak, nonatomic) IBOutlet UISlider *outVolumeSlider;
@@ -24,6 +27,7 @@
 {
     [super viewDidLoad];
     self.audioController = [[AudioController alloc] init];
+    self.mixerController = [MixerController new];
 }
 
 - (void)didReceiveMemoryWarning
@@ -33,9 +37,9 @@
 }
 - (IBAction)togglePassingThrough:(id)sender {
     if(self.passingThroughSwitch.on){
-        [self.audioController start];
+        [self.mixerController startAUGraph];
     } else{
-        [self.audioController stop];
+        [self.mixerController stopAUGraph];
     }
 }
 - (IBAction)play:(id)sender {

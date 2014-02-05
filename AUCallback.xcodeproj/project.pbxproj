@@ -47,8 +47,8 @@
 		3467B6E41897711D00C583F4 /* MixerController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MixerController.m; sourceTree = "<group>"; };
 		3467B6F41897747D00C583F4 /* GuitarMonoSTP.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = GuitarMonoSTP.aif; sourceTree = "<group>"; };
 		3467B6F51897747D00C583F4 /* DrumsMonoSTP.aif */ = {isa = PBXFileReference; lastKnownFileType = file; path = DrumsMonoSTP.aif; sourceTree = "<group>"; };
-		3488F201186BBB9400063EC1 /* SVETimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVETimer.h; sourceTree = "<group>"; };
-		3488F202186BBB9400063EC1 /* SVETimer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SVETimer.m; sourceTree = "<group>"; };
+		3488F201186BBB9400063EC1 /* SVETimer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SVETimer.h; path = ../SVETimer.h; sourceTree = "<group>"; };
+		3488F202186BBB9400063EC1 /* SVETimer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = SVETimer.m; path = ../SVETimer.m; sourceTree = "<group>"; };
 		348CC4F71835DE9300523911 /* AudioController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AudioController.h; sourceTree = "<group>"; };
 		348CC4F81835DE9300523911 /* AudioController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AudioController.m; sourceTree = "<group>"; };
 		348CC4FA1835EC2800523911 /* FrameQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FrameQueue.h; sourceTree = "<group>"; };
@@ -114,8 +114,6 @@
 		349BCCE2180BDB5500930168 = {
 			isa = PBXGroup;
 			children = (
-				3488F201186BBB9400063EC1 /* SVETimer.h */,
-				3488F202186BBB9400063EC1 /* SVETimer.m */,
 				349BCCF4180BDB5500930168 /* AUCallback */,
 				3467B6F31897745F00C583F4 /* Resources */,
 				349BCD13180BDB5500930168 /* AUCallbackTests */,
@@ -150,6 +148,8 @@
 		349BCCF4180BDB5500930168 /* AUCallback */ = {
 			isa = PBXGroup;
 			children = (
+				3488F201186BBB9400063EC1 /* SVETimer.h */,
+				3488F202186BBB9400063EC1 /* SVETimer.m */,
 				349BCCFD180BDB5500930168 /* AppDelegate.h */,
 				349BCCFE180BDB5500930168 /* AppDelegate.m */,
 				349BCD00180BDB5500930168 /* Main.storyboard */,

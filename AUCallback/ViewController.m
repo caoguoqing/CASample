@@ -37,9 +37,9 @@
 }
 - (IBAction)togglePassingThrough:(id)sender {
     if(self.passingThroughSwitch.on){
-        [self.mixerController startAUGraph];
+        [self.audioController start];
     } else{
-        [self.mixerController stopAUGraph];
+        [self.audioController stop];
     }
 }
 - (IBAction)play:(id)sender {

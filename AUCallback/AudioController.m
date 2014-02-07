@@ -25,8 +25,13 @@ NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
 @property (nonatomic) ExtAudioFileRef outputAudioFile;
 @property (nonatomic) double sampleRate;
 @property (nonatomic) AudioStreamBasicDescription *mASBD;
+@property (nonatomic) AudioStreamBasicDescription *sveASBD;
 @property (nonatomic) int readCount;
 @property (nonatomic) int consumedPosition;
+
+@property AudioConverterRef converterCAFtoSVEF;
+@property AudioConverterRef converterSVEFtoCAF;
+
 @end
 
 @implementation AudioController
@@ -35,6 +40,7 @@ NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
     if (self = [super init]){
         self.consumedPosition = 0;
         [self setUpAudioSession];
+        [self setUpConverter];
         [self setUpAUConnections];
         //        [self reopenFile];
     }
@@ -61,15 +67,30 @@ NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
         _mASBD = calloc(1, sizeof(AudioStreamBasicDescription));
         _mASBD->mSampleRate			= 16000;
         _mASBD->mFormatID			= kAudioFormatLinearPCM;
-        _mASBD->mFormatFlags         = kAudioFormatFlagsCanonical;
+        _mASBD->mFormatFlags        = kAudioFormatFlagsAudioUnitCanonical;
         _mASBD->mChannelsPerFrame	= 1; //mono
-        _mASBD->mBitsPerChannel		= 8*sizeof(sample_t);
-        _mASBD->mFramesPerPacket     = 1; //uncompressed
-        _mASBD->mBytesPerFrame       = _mASBD->mChannelsPerFrame*_mASBD->mBitsPerChannel/8;
+        _mASBD->mBitsPerChannel		= 8*sizeof(AudioUnitSampleType);
+        _mASBD->mFramesPerPacket    = 1; //uncompressed
+        _mASBD->mBytesPerFrame      = _mASBD->mChannelsPerFrame*_mASBD->mBitsPerChannel/8;
         _mASBD->mBytesPerPacket		= _mASBD->mBytesPerFrame*_mASBD->mFramesPerPacket;
     }
     return _mASBD;
 }
+- (AudioStreamBasicDescription *)sveASBD{
+    if(!_sveASBD){
+        _sveASBD = calloc(1, sizeof(AudioStreamBasicDescription));
+        _sveASBD->mSampleRate		= 16000;
+        _sveASBD->mFormatID			= kAudioFormatLinearPCM;
+        _sveASBD->mFormatFlags      = kAudioFormatFlagsCanonical;
+        _sveASBD->mChannelsPerFrame	= 1; //mono
+        _sveASBD->mBitsPerChannel	= 8*sizeof(sample_t);
+        _sveASBD->mFramesPerPacket  = 1; //uncompressed
+        _sveASBD->mBytesPerFrame    = _sveASBD->mChannelsPerFrame*_sveASBD->mBitsPerChannel/8;
+        _sveASBD->mBytesPerPacket	= _sveASBD->mBytesPerFrame*_sveASBD->mFramesPerPacket;
+    }
+    return _sveASBD;
+}
+
 - (FrameQueue*) readQueue{
     if(!_readQueue){
         _readQueue = [[FrameQueue alloc] init];
@@ -101,7 +122,7 @@ NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
 	NSAssert (session.inputAvailable, @"Couldn't get current audio input available prop");
     self.sampleRate = session.sampleRate;
     
-    CGFloat gain = 0.2;
+    CGFloat gain = 0.1;
     if (session.isInputGainSettable) {
         BOOL success = [session setInputGain:gain
                                        error:&error];
@@ -130,10 +151,15 @@ static OSStatus RenderCallback (
     FrameQueue* queue = [self readQueue];
     if([queue isEmpty]){
         *ioActionFlags |= kAudioUnitRenderAction_OutputIsSilence;
-        memset(buffer.mData, 0, inNumberFrames*sizeof(sample_t));
+        memset(buffer.mData, 0, inNumberFrames*sizeof(AudioUnitSampleType));
     } else{
-        int retrieved = [queue get:buffer.mData length:inNumberFrames];
-        buffer.mDataByteSize = retrieved*sizeof(sample_t);
+        AudioBuffer* originBuffer = malloc(sizeof(AudioBuffer));
+        originBuffer->mNumberChannels = 1;
+        originBuffer->mData = malloc(inNumberFrames * sizeof(sample_t));
+        int retrieved = [queue get:originBuffer->mData length:inNumberFrames];
+        originBuffer->mDataByteSize = retrieved*sizeof(sample_t);
+        
+        AudioConverterConvertBuffer([self converterSVEFtoCAF], originBuffer->mDataByteSize, originBuffer->mData, &(buffer.mDataByteSize), buffer.mData);
     }
     [self setConsumedPosition:([self consumedPosition]+inNumberFrames)];
     
@@ -155,8 +181,8 @@ static OSStatus CaptureCallback (
     
     AudioBuffer* buffer = malloc(sizeof(AudioBuffer));
 	buffer->mNumberChannels = 1;
-	buffer->mDataByteSize = inNumberFrames * sizeof(sample_t);
-	buffer->mData = malloc(inNumberFrames * sizeof(sample_t));
+	buffer->mDataByteSize = inNumberFrames * sizeof(AudioUnitSampleType);
+	buffer->mData = malloc(inNumberFrames * sizeof(AudioUnitSampleType));
     AudioBufferList bufferList;
 	bufferList.mNumberBuffers = 1;
 	bufferList.mBuffers[0] = *buffer;
@@ -170,9 +196,17 @@ static OSStatus CaptureCallback (
                           &bufferList);
 	if(err)
 		fprintf( stderr, "AudioUnitRender() failed with error %i\n", (int)err );
+
+    
+    AudioBuffer* destBuffer = malloc(sizeof(AudioBuffer));
+	destBuffer->mNumberChannels = 1;
+	destBuffer->mDataByteSize = inNumberFrames * sizeof(sample_t);
+	destBuffer->mData = malloc(inNumberFrames * sizeof(sample_t));
+
+    AudioConverterConvertBuffer([self converterCAFtoSVEF], buffer->mDataByteSize, buffer->mData, &(destBuffer->mDataByteSize), destBuffer->mData);
     
     FrameQueue* queue = [self readQueue];
-    [queue add:buffer];
+    [queue add:destBuffer];
     
 #ifdef _DEBUG_
     //	err = ExtAudioFileWriteAsync([self outputAudioFile], inNumberFrames, &bufferList);
@@ -301,6 +335,21 @@ static OSStatus CaptureCallback (
     
     setupErr = AUGraphInitialize (_processingGraph);
     NSAssert (setupErr == noErr, @"Couldn't initialize AUGraph");
+}
+
+- (void)setUpConverter{
+    OSStatus setupErr;
+    setupErr = AudioConverterNew(self.mASBD,
+                      self.sveASBD,
+                      &_converterCAFtoSVEF);
+    NSLog(@"Converter Create Status %d",setupErr);
+//    NSAssert (setupErr == noErr, @"Couldn't create converter");
+    setupErr = AudioConverterNew(self.sveASBD,
+                      self.mASBD,
+                      &_converterSVEFtoCAF);
+    NSLog(@"Converter Create Status %d",setupErr);
+//    NSAssert (setupErr == noErr, @"Couldn't create converter");
+
 }
 
 - (void) setUpFile{

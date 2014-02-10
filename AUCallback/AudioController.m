@@ -9,11 +9,6 @@
 #import "AudioController.h"
 #import "FrameQueue.h"
 
-
-NSString *const AudioSessionPortBluetooth = @"AudioSessionPortBluetooth";
-NSString *const AudioSessionPortSpeaker = @"AudioSessionPortSpeaker";
-NSString *const AudioSessionPortReceiver = @"AudioSessionPortReceiver";
-
 @interface AudioController ()
 @property (nonatomic) AudioUnit remoteIOUnit;
 @property (nonatomic) AudioUnit renderMixerUnit;
